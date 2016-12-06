@@ -14,10 +14,13 @@ close all; clear all; clc;
 syms t1;
 syms t2;
 syms t3;
+syms t1_dot;
+syms t2_dot;
+syms t3_dot;
 syms a1;
 syms a2;
 syms a3;
-
+g = 9.81;
 
 A_1 = [ cos(t1), -sin(t1), 0, a1 * cos(t1); ...
         sin(t1), cos(t1), 0, a1 * sin(t1); ...      
@@ -41,6 +44,8 @@ y = [1;1;1;];
 z = [1;1;1;];
 m = [1;1;1;];
 
+
+% Calculate Inertia Matrix
 I(1,:,:) =[m(1)*(y(1)^2+z(1)^2)/12, 0 , 0; ...
        0, m(1)*(x(1)^2+z(1)^2)/12, 0; ...
        0, 0, m(1)*(x(1)^2+y(1)^2)/12; ];
@@ -53,6 +58,8 @@ I(3,:,:) =[m(3)*(y(3)^2+z(3)^2)/12, 0 , 0; ...
    0, m(3)*(x(3)^2+z(3)^2)/12, 0; ...
    0, 0, m(3)*(x(3)^2+y(3)^2)/12; ];
 
+
+% Define Jacobian Matricies
 Jw(1,:,:) = [0,0,0;0,0,0;1,0,0];
 Jw(2,:,:) = [0,0,0;0,0,0;1,1,0];
 Jw(3,:,:) = [0,0,0;0,0,0;1,1,1];   
@@ -81,9 +88,17 @@ Jv(3,:,:) = [diff(x3,t1),diff(x3,t2),diff(x3,t3);...
     diff(y3,t1),diff(y3,t2),diff(y3,t3);...
     diff(z3,t1),diff(z3,t2),diff(z3,t3)];
 
+%Define U and T
 
+U = m(1)*g*y1 + m(2)*g*y2 +m(2)*g*y3;
 
+q_dot = [t1_dot;t2_dot;t3_dot];
 
-
+T = m(1).*q_dot'.*Jv(1,:,:)'.*Jv(1,:,:).*q_dot +...
+    q_dot'.*Jw(1,:,:)'.*I(1,:,:).*Jw(1,:,:).*q_dot +...
+    m(2).*q_dot'.*Jv(2,:,:)'.*Jv(2,:,:).*q_dot +...
+    q_dot'.*Jw(2,:,:)'.*I(2,:,:).*Jw(2,:,:).*q_dot +...
+    m(3).*q_dot'.*Jv(3,:,:)'.*Jv(3,:,:).*q_dot +...
+    q_dot'.*Jw(3,:,:)'.*I(3,:,:).*Jw(3,:,:).*q_dot; 
 
 
