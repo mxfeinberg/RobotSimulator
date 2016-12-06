@@ -1,3 +1,14 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This code is for the simulation of a three arm robot 
+% with revolute joints                                 
+%
+% This is a property of Feinberg Industries
+% All rights reserved
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 close all; clear all; clc;
 syms t1;
 syms t2;
