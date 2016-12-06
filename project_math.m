@@ -116,7 +116,10 @@ end
 %Lagrangian
 L = T-U;
 
-Tau = diff(diff(L,q_dot),t) - diff(L,q);
+
+for i = 1:3
+    Tau(i) = diff(diff(L, q_dot(i)),t) - diff(L,q(i));
+end
 
 
 
