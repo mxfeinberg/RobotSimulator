@@ -65,6 +65,14 @@ Jv(1,:,:) = [diff(x1,t1),diff(x1,t2),diff(x1,t3);...
     diff(y1,t1),diff(y1,t2),diff(y1,t3);...
     diff(z1,t1),diff(z1,t2),diff(z1,t3)];
 
+x2 = a1*cos(t1) +a2*cos(t1+t2)/2;
+y2 = a1*sin(t1) +a2*sin(t1+t2)/2;
+z2 = 0;
+
+Jv(2,:,:) = [diff(x2,t1),diff(x2,t2),diff(x2,t3);...
+    diff(y2,t1),diff(y2,t2),diff(y2,t3);...
+    diff(z2,t1),diff(z2,t2),diff(z2,t3)];
+
 
 
 
