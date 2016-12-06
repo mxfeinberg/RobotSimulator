@@ -10,12 +10,15 @@
 
 
 close all; clear all; clc;
+%% Create System Variables
 syms t1;
 syms t2;
 syms t3;
 syms a1;
 syms a2;
 syms a3;
+
+%% Define Matricies
 A_1 = [ cos(t1), -sin(t1), 0, a1 * cos(t1); ...
         sin(t1), cos(t1), 0, a1 * sin(t1); ...      
         0, 0, 1, 0; ...
