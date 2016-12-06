@@ -4,7 +4,7 @@
 % with revolute joints                                 
 %
 % This is a property of Feinberg Industries
-% All rights reserved
+% All rights reserved © 1873
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
