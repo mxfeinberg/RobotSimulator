@@ -22,7 +22,6 @@ a1 = 1;
 a2 =1;
 a3 = 1;
 g = 9.81;
-Tau = [0,0,0];
 
 
 A_1 = [ cos(t1), -sin(t1), 0, a1 * cos(t1); ...
@@ -93,17 +92,24 @@ Jv(3,:,:) = [diff(x3,t1),diff(x3,t2),diff(x3,t3);...
 
 %Define U and T
 
-U = m(1)*g*y1 + m(2)*g*y2 +m(2)*g*y3;
+U = m(1)*g*y1 + m(2)*g*y2 +m(2)*g*y3
 
 q_dot = [t1_dot;t2_dot;t3_dot];
 q = [t1;t2;t3];
-T = [0;0;0;];
+
 
 for i=1:3
-    T =  T + m(i) * q_dot' * reshape(Jv(i,:,:), 3,3)' * ...
-         reshape(Jv(i,:,:),3,3)*q_dot + ...
-         q_dot'*reshape(Jw(i,:,:),3,3)'*reshape(I(i,:,:),3,3) ...
-         *reshape(Jw(i,:,:),3 ,3) * q_dot;
+    if i == 1
+        T =  m(i) * q_dot' * reshape(Jv(i,:,:), 3,3)' * ...
+             reshape(Jv(i,:,:),3,3)*q_dot + ...
+             q_dot'*reshape(Jw(i,:,:),3,3)'*reshape(I(i,:,:),3,3) ...
+             *reshape(Jw(i,:,:),3 ,3) * q_dot;
+    else
+        T =  T + m(i) * q_dot' * reshape(Jv(i,:,:), 3,3)' * ...
+             reshape(Jv(i,:,:),3,3)*q_dot + ...
+             q_dot'*reshape(Jw(i,:,:),3,3)'*reshape(I(i,:,:),3,3) ...
+             *reshape(Jw(i,:,:),3 ,3) * q_dot;
+    end
 end
 
 %T = m(1).*q_dot'.*Jv(1,:,:)'.*Jv(1,:,:).*q_dot +...
@@ -118,7 +124,7 @@ L = T-U;
 
 
 for i = 1:3
-    Tau(i) = diff(diff(L, q_dot(i)),t) - diff(L,q(i));
+    Tau(i) = diff(diff(L, q_dot(i)),t) - diff(L,q(i))
 end
 
 
