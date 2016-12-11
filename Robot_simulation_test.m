@@ -5,7 +5,7 @@ params.teamname = 'My Team';
 params.action_filename = 'action.mat';
 params.movie_filename = 'movie_4.avi';
 params.snapshot_filename = 'snapshot.pdf';
-params.makemovie = true;
+params.makemovie = false;
 params.makesnapshot = false;
 
 % - NOTE: The keyboard interface is as follows:
