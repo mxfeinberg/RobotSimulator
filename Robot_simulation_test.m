@@ -1,11 +1,11 @@
 function Robot_simulation_352
 
 
-
+params.teamname = 'My Team';
 params.action_filename = 'action.mat';
-params.movie_filename = 'movie_3.avi';
+params.movie_filename = 'movie_4.avi';
 params.snapshot_filename = 'snapshot.pdf';
-params.makemovie = false;
+params.makemovie = true;
 params.makesnapshot = false;
 
 % - NOTE: The keyboard interface is as follows:
@@ -141,7 +141,7 @@ dt = 2e-2;
 tmax = 100;
 
 % joint positions
-theta = [0;0;0];
+theta = [-pi/1.75;0;0];
 % joint velocities
 thetadot = [0;0;0];
 % intial torques
@@ -196,17 +196,17 @@ while (~done)
     
     u2 = curaction(2);
     %%%% PID for joint 2
-    rate2 = 0;
-    ref2 = ref2+rate2*dt;
-    ref2-theta(2);
-    k21 = 500;
-    k22 = 10;
-    k23 = 200;
-    c1 = ref2-theta(2);
-    err2 = (ref - theta(2))+err2;
-    diff2 = (c1-c2)/dt;
-    c2 = c1;
-    u2 = k21*(ref2-theta(2))+k22*err2;+k23*diff2;
+%     k21 = 500;
+%     k22 = 10;
+%     k23 = 200;
+%     
+%     rate2 = 0;
+%     ref2 = ref2+rate2*dt;
+%     c1 = ref2-theta(2);
+%     err2 = (ref2 - theta(2))+err2;
+%     diff2 = (c1-c2)/dt
+%     c2 = c1;
+%     u2 = k21*(ref2-theta(2))+k22*err2;+k23*diff2;
     
     u3 = curaction(3);
 
@@ -359,29 +359,29 @@ a3c = robot.link3.dy/2;
 % Working 2 link case
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-G1 = g*(a1c*m1+a1*m2)*cos(theta(1))+a2c*g*m2*cos(theta(1)+theta(2)) - a1*a2c*m2*sin(theta(2))*thetadot(2)*(2*thetadot(1)+thetadot(2));
-A1 = (J1(3,3)+J2(3,3)+a1c^2*m1+(a1^2+a2c^2)*m2+2*a1*a2c*m2*cos(theta(2)));
-A2 = (J2(3,3)+a2c^2*m2+a1*a2c*m2*cos(theta(2)));
-A3 = 0;
-
-G2 = a2c*m2*(g*cos(theta(1)+theta(2))+a1*sin(theta(2))*thetadot(1)^2);
-B1 = (J2(3,3)+a2c^2*m2+a1*a2c*m2*cos(theta(2)));
-B2 = (J2(3,3)+a2c^2*m2);
-B3 = 0;
-
-G3=0;
-C1=0;
-C2=0;
-C3=0;
-
-
-beta = [A1 A2 A3;B1 B2 B3;];
-tau = [u1 - G1;u2 - G2;];
-Gamma = beta\tau;
-
-thetadotdot = Gamma(1:2);
-thetadotdot(3) = 0;
-%thetadotdot(2) = 0;
+% G1 = g*(a1c*m1+a1*m2)*cos(theta(1))+a2c*g*m2*cos(theta(1)+theta(2)) - a1*a2c*m2*sin(theta(2))*thetadot(2)*(2*thetadot(1)+thetadot(2));
+% A1 = (J1(3,3)+J2(3,3)+a1c^2*m1+(a1^2+a2c^2)*m2+2*a1*a2c*m2*cos(theta(2)));
+% A2 = (J2(3,3)+a2c^2*m2+a1*a2c*m2*cos(theta(2)));
+% A3 = 0;
+% 
+% G2 = a2c*m2*(g*cos(theta(1)+theta(2))+a1*sin(theta(2))*thetadot(1)^2);
+% B1 = (J2(3,3)+a2c^2*m2+a1*a2c*m2*cos(theta(2)));
+% B2 = (J2(3,3)+a2c^2*m2);
+% B3 = 0;
+% 
+% G3=0;
+% C1=0;
+% C2=0;
+% C3=0;
+% 
+% 
+% beta = [A1 A2 A3;B1 B2 B3;];
+% tau = [u1 - G1;u2 - G2;];
+% Gamma = beta\tau;
+% 
+% thetadotdot = Gamma(1:2);
+% thetadotdot(3) = 0;
+% %thetadotdot(1) = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -389,41 +389,41 @@ thetadotdot(3) = 0;
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% G1 = a1c*g*m1*cos(theta(1))+a1*g*m2*cos(theta(1))+a1*g*m3*cos(theta(1))+a2c*g*m2*cos(theta(1)+theta(2))+a2*g*m3*cos(theta(1)+theta(2))+...
-%     a3c*g*m3*cos(theta(1)+theta(2)+theta(3)) -a1*((a2c*m2+a2*m3)*sin(theta(2))+a3c*m3*sin(theta(2)+theta(3)))*thetadot(2)^2 -...
-%     2*a3c*m3*(a2*sin(theta(3))+a1*sin(theta(2)+theta(3)))*thetadot(2)*thetadot(3) - a2*a3c*m3*sin(theta(3))*thetadot(3)^2 -a1*a3c*m3*sin(theta(2)+theta(3))*thetadot(3)^2-...
-%     2*thetadot(1)*(a1*((a2c*m2+a2*m3)*sin(theta(2)) +a3c*m3*sin(theta(2)+theta(3)))*thetadot(2)+a3c*m3*(a2*sin(theta(3))+a1*sin(theta(2)+theta(3)))*thetadot(3));
-% A3 = J3(3,3)+a3c^2*m3+a2*a3c*m3*cos(theta(3))+a1*a3c*m3*cos(theta(2)+theta(3));
-% A2 = J2(3,3)+J3(3,3)+a2c^2*m2+a2^2*m3+a3c^2*m3+a1*(a2c*m2+a2*m3)*cos(theta(2))+...
-%     2*a2*a3c*m3*cos(theta(3))+a1*a3c*m3*cos(theta(2)+theta(3));
-% A1 = J1(3,3)+J2(3,3)+J3(3,3)+a1c^2*m1+a1^2*m2+a2c^2*m2+a1^2*m3+a2^2*m3+a3c^2*m3+2*a1*(a2c*m2+a2*m3)*cos(theta(2))+...
-%     2*a2*a3c*m3*cos(theta(3))+2*a1*a3c*m3*cos(theta(2)+theta(3));
-% 
-% 
-% G2 = a2c * g* m2*cos(theta(1) + theta(2))...
-%     + a2 * g * m3*cos(theta(1)+theta(2))...
-%     + a3c * g *m3*cos(theta(1)+theta(2)+theta(3)) ...
-%     + a1*((a2c*m2+a2*m3)*sin(theta(2)) + a3c*m3*sin(theta(2)+theta(3)))*thetadot(1)^2 ...
-%     - 2*a2*a3c*m3*sin(theta(3))*thetadot(1)*thetadot(3) - 2 * a2*a3c*m3*sin(theta(3)) ...
-%     *thetadot(2)*thetadot(3) - a2*a3c*m3*sin(theta(3))*thetadot(3)^2 ;
-% B1 = (J2(3,3) + J3(3,3) + a2c^2*m2+a2^2*m3+a3c^2*m3+a1*(a2c*m2 + a2*m3)*cos(theta(2)) ...
-%      + 2 * a2*a3c*m3*cos(theta(3)) + a1*a3c *m3 * cos(theta(2)+theta(3)));
-% B2 = (J2(3,3) + J3(3,3) + a2c^2*m2 + a2^2*m3 + a3c^2*m3 + 2*a2*a3c*m3*cos(theta(3)));
-% B3 = (J3(3,3) + a3c^2*m3+a2*a3c*m3*cos(theta(3)));
-% 
-% 
-% G3 = a3c*m3*(g*cos(theta(1)+theta(2)+theta(3))+(a2*sin(theta(3))+a1*sin(theta(2)+theta(3))*thetadot(1)^2)+...
-%     2*a2*sin(theta(3))*thetadot(1)*thetadot(2)+a2*sin(theta(3))*thetadot(2)^2);
-% C1 = J3(3,3)+a3c^2*m3+a2*a3c*m3*cos(theta(3))+a1*a3c*cos(theta(2)+theta(3));
-% C2 = J3(3,3)+a3c^2*m3+a2*a3c*m3*cos(theta(3));
-% C3 = J3(3,3)+a3c^2*m3;
-% 
-% beta = [A1 A2 A3; B1 B2 B3; C1 C2 C3];
-% delta = [u1 - G1;u2 - G2;u3 - G3];
-% Gamma = beta\delta;
-% 
-% 
-% thetadotdot = Gamma(1:3);
+G1 = a1c*g*m1*cos(theta(1))+a1*g*m2*cos(theta(1))+a1*g*m3*cos(theta(1))+a2c*g*m2*cos(theta(1)+theta(2))+a2*g*m3*cos(theta(1)+theta(2))+...
+    a3c*g*m3*cos(theta(1)+theta(2)+theta(3)) -a1*((a2c*m2+a2*m3)*sin(theta(2))+a3c*m3*sin(theta(2)+theta(3)))*thetadot(2)^2 -...
+    2*a3c*m3*(a2*sin(theta(3))+a1*sin(theta(2)+theta(3)))*thetadot(2)*thetadot(3) - a2*a3c*m3*sin(theta(3))*thetadot(3)^2 -a1*a3c*m3*sin(theta(2)+theta(3))*thetadot(3)^2-...
+    2*thetadot(1)*(a1*((a2c*m2+a2*m3)*sin(theta(2)) +a3c*m3*sin(theta(2)+theta(3)))*thetadot(2)+a3c*m3*(a2*sin(theta(3))+a1*sin(theta(2)+theta(3)))*thetadot(3));
+A3 = J3(3,3)+a3c^2*m3+a2*a3c*m3*cos(theta(3))+a1*a3c*m3*cos(theta(2)+theta(3));
+A2 = J2(3,3)+J3(3,3)+a2c^2*m2+a2^2*m3+a3c^2*m3+a1*(a2c*m2+a2*m3)*cos(theta(2))+...
+    2*a2*a3c*m3*cos(theta(3))+a1*a3c*m3*cos(theta(2)+theta(3));
+A1 = J1(3,3)+J2(3,3)+J3(3,3)+a1c^2*m1+a1^2*m2+a2c^2*m2+a1^2*m3+a2^2*m3+a3c^2*m3+2*a1*(a2c*m2+a2*m3)*cos(theta(2))+...
+    2*a2*a3c*m3*cos(theta(3))+2*a1*a3c*m3*cos(theta(2)+theta(3));
+
+
+G2 = a2c * g* m2*cos(theta(1) + theta(2))...
+    + a2 * g * m3*cos(theta(1)+theta(2))...
+    + a3c * g *m3*cos(theta(1)+theta(2)+theta(3)) ...
+    + a1*((a2c*m2+a2*m3)*sin(theta(2)) + a3c*m3*sin(theta(2)+theta(3)))*thetadot(1)^2 ...
+    - 2*a2*a3c*m3*sin(theta(3))*thetadot(1)*thetadot(3) - 2 * a2*a3c*m3*sin(theta(3)) ...
+    *thetadot(2)*thetadot(3) - a2*a3c*m3*sin(theta(3))*thetadot(3)^2 ;
+B1 = (J2(3,3) + J3(3,3) + a2c^2*m2+a2^2*m3+a3c^2*m3+a1*(a2c*m2 + a2*m3)*cos(theta(2)) ...
+     + 2 * a2*a3c*m3*cos(theta(3)) + a1*a3c *m3 * cos(theta(2)+theta(3)));
+B2 = (J2(3,3) + J3(3,3) + a2c^2*m2 + a2^2*m3 + a3c^2*m3 + 2*a2*a3c*m3*cos(theta(3)));
+B3 = (J3(3,3) + a3c^2*m3+a2*a3c*m3*cos(theta(3)));
+
+
+G3 = a3c*m3*(g*cos(theta(1)+theta(2)+theta(3))+(a2*sin(theta(3))+a1*sin(theta(2)+theta(3))*thetadot(1)^2)+...
+    2*a2*sin(theta(3))*thetadot(1)*thetadot(2)+a2*sin(theta(3))*thetadot(2)^2);
+C1 = J3(3,3)+a3c^2*m3+a2*a3c*m3*cos(theta(3))+a1*a3c*cos(theta(2)+theta(3));
+C2 = J3(3,3)+a3c^2*m3+a2*a3c*m3*cos(theta(3));
+C3 = J3(3,3)+a3c^2*m3;
+
+beta = [A1 A2 A3; B1 B2 B3; C1 C2 C3];
+delta = [u1 - G1;u2 - G2;u3 - G3];
+Gamma = beta\delta;
+
+
+thetadotdot = Gamma(1:3);
 % thetadotdot(3) =0;
 % thetadotdot(1) =0;
 
