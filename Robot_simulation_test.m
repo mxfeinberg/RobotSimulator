@@ -8,7 +8,7 @@ params.snapshot_filename = 'snapshot.pdf';
 params.makemovie = false;
 params.makesnapshot = false;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
 %
 %      'j'  -- move in negative x direction
 %
@@ -19,7 +19,7 @@ params.makesnapshot = false;
 %      'h'  -- move in negative y direction
 %
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
 
 % Define the geometry and mass properties of the robot.
 robot = GetGeometryOfRobot;
@@ -35,11 +35,11 @@ function thetas = SolveOrientation(k,pos)
     thetas=[mod(double(t2),2*pi);mod(double(t3),2*pi)];
 
 function robot = GetGeometryOfRobot
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Sets up the Geometry of the robot
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 robot.base.dx=sqrt(2);
 robot.base.dy=sqrt(2);
 robot.base.dz=.5;
@@ -130,11 +130,11 @@ robot.link3.J_in3 =  robot.link3.m* [(robot.link3.dy^2 + robot.link3.dz^2)/12 0 
 function RunSimulation(robot,params,err,w2,err2,W22,err3,W32)
 
 global action done pos goal_theta
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 %Set up the robot and set initial conditions
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 world = CreateFigure(robot,params);
 % Start time
 t = 0;
@@ -158,11 +158,12 @@ y = 5;
 pos = [x,y];
 k=atan2(pos(2),pos(1));
 goal_theta = [k;SolveOrientation(k,pos)];
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Records actions and makes a movie
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 action = [u1;u2;u3];
 if (params.makemovie)
     load(params.action_filename);
@@ -174,7 +175,8 @@ else
 end
 
 done = false;
-while (~done)
+
+while (~done) 
     
     if (params.makemovie)
         [actionRecord,curaction,done] = RetrieveAction(actionRecord);
@@ -184,11 +186,11 @@ while (~done)
         actionRecord = StoreAction(actionRecord,curaction);
     end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 %  Runs a PID controller on each of the joints
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     torque_limit=3000;
     
     k=[10000,1,300;1000,10,300;150,1,100];
@@ -200,11 +202,11 @@ while (~done)
     u1=U(1);
     u2=U(2);
     u3=U(3);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++    
 %
 %  limits torques
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     if u1>torque_limit
         u1=torque_limit;
     elseif u1<-torque_limit
@@ -226,11 +228,11 @@ while (~done)
     
   
 	
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Calculates the position of the links in the initial frame
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     c1 = cos(theta(1));
     s1 = sin(theta(1));
  
@@ -260,11 +262,11 @@ while (~done)
     robot.link1.p_in0 = [o_1in0 o_1in0 o_1in0 o_1in0 o_1in0 o_1in0 o_1in0 o_1in0] + R_1in0*robot.link1.p_in1;
     robot.link2.p_in0 = [o_2in0 o_2in0 o_2in0 o_2in0 o_2in0 o_2in0 o_2in0 o_2in0] + R_2in0*robot.link2.p_in2;
     robot.link3.p_in0 = [o_3in0 o_3in0 o_3in0 o_3in0 o_3in0 o_3in0 o_3in0 o_3in0] + R_3in0*robot.link3.p_in3;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Updates the world and stores figure for movie 
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Update the figure.
     world = UpdateFigure(world,robot,o_1in0,R_1in0,o_2in0,R_2in0,o_3in0,R_3in0,u1,u2,u3,t,tmax);
     
