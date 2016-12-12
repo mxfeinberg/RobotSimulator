@@ -28,23 +28,7 @@ robot = GetGeometryOfRobot;
 
 % Run the simulation.
 
-global pos
-global goal_theta
-global a1 a2 a3
-pos=[5;-10;0];
-a1 =4;
-a2 =4;
-a3 =4;
-syms theta2 theta3;
-
-k = atan2(pos(2),pos(1));
-[th2,th3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
-    pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
-
-goal_theta =[k,mod(double(th2),2*pi),mod(double(th3),2*pi)];
-
-
-RunSimulation(robot,params,0,0,goal_theta(1),0,0,goal_theta(2),0,0,goal_theta(3));
+RunSimulation(robot,params,0,0,0,0,0,0);
 
 function thetas = SolveOrientation(k,pos)
     global a1 a2 a3
@@ -52,7 +36,7 @@ function thetas = SolveOrientation(k,pos)
     k = atan2(pos(2),pos(1));
     [t2,t3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
     	pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
-    thetas=[mod(double(t2),2*pi),mod(double(t3),2*pi)];
+    thetas=[mod(double(t2),2*pi);mod(double(t3),2*pi)];
 
 function robot = GetGeometryOfRobot
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -147,7 +131,9 @@ robot.link3.J_in3 =  robot.link3.m* [(robot.link3.dy^2 + robot.link3.dz^2)/12 0 
                                     0 0 (robot.link3.dy^2 + robot.link3.dx^2)/12];
 
 
-function RunSimulation(robot,params,err,w2,ref,err2,W22,ref2,err3,W32,ref3)
+function RunSimulation(robot,params,err,w2,err2,W22,err3,W32)
+
+global action done pos goal_theta
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %Set up the robot and set initial conditions
@@ -170,12 +156,17 @@ thetadot = [0;0;0];
 u1 = 0;
 u2 = 0;
 u3 = 0;
+%initial goal positions
+x = 5;
+y = 5;
+pos = [x,y];
+k=atan2(pos(2),pos(1));
+goal_theta = [k;SolveOrientation(k,pos)];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % Records actions and makes a movie
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-global action done
 action = [u1;u2;u3];
 if (params.makemovie)
     load(params.action_filename);
@@ -196,53 +187,67 @@ while (~done)
         curaction = action;
         actionRecord = StoreAction(actionRecord,curaction);
     end
-    
-    
-    
-    
-    
-    global goal_theta
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % Computes the Input Torque
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    torque_limit=10000;
+    torque_limit=3000;
+    
+    k=[10000,1,300;1000,10,300;150,1,100];
 
    %%%%% PID for joint 1
-    k1 = 10000;
-    k2 = 1;
-    k3  = 300;
+%     k1 = 10000;
+%     k2 = 1;
+%     k3  = 300;
     
-    ref=goal_theta(1);
-    w1 = ref-theta(1);
-    err = (ref - theta(1))+err;
-    diff =(w1-w2)/dt;
+    w1=goal_theta-theta;
+    err=(goal_theta-theta)+err;
+    diff=(w1-w2)/dt;
     w2=w1;
-    u1 = k1*(ref-theta(1))+ k2*err+k3*diff;
+    U = k(:,1).*((goal_theta-theta))+err.*k(:,2)+diff.*k(:,3);
+    u1=U(1);
+    u2=U(2);
+    u3=U(3);
+    
+    %limit torques
     if u1>torque_limit
         u1=torque_limit;
     elseif u1<-torque_limit
         u1=-torque_limit;
     end
     
-    %%%% PID for joint 2
-    k21 = 1000;
-    k22 = 10;
-    k23 = 300;
-    
-    ref2=goal_theta(2);
-    W21 = ref2-theta(2);
-    err2 = W21+err2;
-    diff2 = (W21-W22)/dt;
-    W22 = W21;
-    u2 = k21*(ref2-theta(2))+k22*err2+k23*diff2;
-    if u2>torque_limit
-        u2=torque_limit;
-    elseif u2<-torque_limit
-        u2=-torque_limit;
+    if u2>2*torque_limit/3
+        u2=2*torque_limit/3;
+    elseif u2<-2*torque_limit/3
+        u2=-2*torque_limit/3;
     end
+    
+    if u3>torque_limit/3
+        u3=torque_limit/3;
+    elseif u3<-torque_limit/3
+        u3=-torque_limit/3;
+    end
+    [t,theta,thetadot] = Simulate(t,dt,theta,thetadot,u1,u2,u3,robot); 
+    
+    %     ref=goal_theta(1);
+%     w1 = ref-theta(1);
+%     err = (ref - theta(1))+err;
+%     diff =(w1-w2)/dt;
+%     w2=w1;
+%     u1 = k1*(ref-theta(1))+ k2*err+k3*diff;
+%     %%%% PID for joint 2
+%     k21 = 1000;
+%     k22 = 10;
+%     k23 = 300;
+%     
+%     ref2=goal_theta(2);
+%     W21 = ref2-theta(2);
+%     err2 = W21+err2;
+%     diff2 = (W21-W22)/dt;
+%     W22 = W21;
+%     u2 = k21*(ref2-theta(2))+k22*err2+k23*diff2;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
@@ -250,22 +255,17 @@ while (~done)
     %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    k31 = 150;
-    k32 = 1;
-    k33 = 100;
-    
-    ref3=goal_theta(3);
-    W31 = ref3 - theta(3);
-    err3 = W31 + err3;
-    diff3 = (W31 - W32)/dt;
-    W32 = W31;
-    u3 = k31*W31 + k32*err3+k33*diff3;
-    if u3>torque_limit
-        u3=torque_limit;
-    elseif u3<-torque_limit
-        u3=-torque_limit;
-    end
-    [t,theta,thetadot] = Simulate(t,dt,theta,thetadot,u1,u2,u3,robot);            
+%     k31 = 150;
+%     k32 = 1;
+%     k33 = 100;
+%     
+%     ref3=goal_theta(3);
+%     W31 = ref3 - theta(3);
+%     err3 = W31 + err3;
+%     diff3 = (W31 - W32)/dt;
+%     W32 = W31;
+%     u3 = k31*W31 + k32*err3+k33*diff3;
+              
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -597,33 +597,31 @@ world.view0.frame3 = DrawFrame(world.view0.frame3,o_3in0,R_3in0);
 drawnow
 
 function onkeypress_nokeypad(src,event)
-global action
-global pos
-global goal_theta done
+global pos goal_theta done
 du = 1;
 if event.Character == 'j'
-    if (pos(1)+du)^2+pos(2)^2<12^2
-        pos(1)=pos(1)+du;
-        k=atan2(pos(2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
-    end
-elseif event.Character == 'k'
     if (pos(1)-du)^2+pos(2)^2<12^2
         pos(1)=pos(1)-du;
         k=atan2(pos(2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
+        goal_theta=[k;SolveOrientation(k,pos)];
+    end
+elseif event.Character == 'k'
+    if (pos(1)+du)^2+pos(2)^2<12^2
+        pos(1)=pos(1)+du;
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k;SolveOrientation(k,pos)];
     end
 elseif event.Character == 'y'
     if pos(1)^2+(pos(2)+du)^2<12^2
         pos(2)=pos(2)+du;
         k=atan2(pos(2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
+        goal_theta=[k;SolveOrientation(k,pos)];
     end
 elseif event.Character == 'h'
     if pos(1)^2+(pos(2)-du)^2<12^2
         pos(2)=pos(2)-du;
-        k=atan2(pos(s2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k;SolveOrientation(k,pos)];
     end
 elseif event.Character == 'q'
     done = true;
