@@ -24,8 +24,6 @@ params.makesnapshot = false;
 % Define the geometry and mass properties of the robot.
 robot = GetGeometryOfRobot;
 
-% Run the simulation.
-
 RunSimulation(robot,params,0,0,0,0,0,0);
 
 function thetas = SolveOrientation(k,pos)
@@ -169,7 +167,7 @@ action = [u1;u2;u3];
 if (params.makemovie)
     load(params.action_filename);
     myV = VideoWriter(params.movie_filename);
-    myV.Quality = 100;
+    myV.Quality = 40;
     open(myV);
 else
     actionRecord = [];
@@ -188,18 +186,12 @@ while (~done)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Computes the Input Torque
+%  Runs a PID controller on each of the joints
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     torque_limit=3000;
     
     k=[10000,1,300;1000,10,300;150,1,100];
-
-   %%%%% PID for joint 1
-%     k1 = 10000;
-%     k2 = 1;
-%     k3  = 300;
-    
     w1=goal_theta-theta;
     err=(goal_theta-theta)+err;
     diff=(w1-w2)/dt;
@@ -208,8 +200,11 @@ while (~done)
     u1=U(1);
     u2=U(2);
     u3=U(3);
-    
-    %limit torques
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+%
+%  limits torques
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if u1>torque_limit
         u1=torque_limit;
     elseif u1<-torque_limit
@@ -229,41 +224,7 @@ while (~done)
     end
     [t,theta,thetadot] = Simulate(t,dt,theta,thetadot,u1,u2,u3,robot); 
     
-    %     ref=goal_theta(1);
-%     w1 = ref-theta(1);
-%     err = (ref - theta(1))+err;
-%     diff =(w1-w2)/dt;
-%     w2=w1;
-%     u1 = k1*(ref-theta(1))+ k2*err+k3*diff;
-%     %%%% PID for joint 2
-%     k21 = 1000;
-%     k22 = 10;
-%     k23 = 300;
-%     
-%     ref2=goal_theta(2);
-%     W21 = ref2-theta(2);
-%     err2 = W21+err2;
-%     diff2 = (W21-W22)/dt;
-%     W22 = W21;
-%     u2 = k21*(ref2-theta(2))+k22*err2+k23*diff2;
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %
-    % PID for link 3
-    %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-%     k31 = 150;
-%     k32 = 1;
-%     k33 = 100;
-%     
-%     ref3=goal_theta(3);
-%     W31 = ref3 - theta(3);
-%     err3 = W31 + err3;
-%     diff3 = (W31 - W32)/dt;
-%     W32 = W31;
-%     u3 = k31*W31 + k32*err3+k33*diff3;
-              
+  
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -338,13 +299,13 @@ if (params.makesnapshot)
 end
 
 function [thetadot,thetadotdot] = GetRates(theta,thetadot,u1,u2,u3,robot)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% Calculates the theta double dots using ode45 and derived equations of
-% motion
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%
+%   Sets up constants for equations of motion
+%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % inputs:
 %
 %   theta       3x1 matrix of joint angles
@@ -376,13 +337,13 @@ a3 = robot.link3.dy;
 a1c = robot.link1.dy/2;
 a2c = robot.link2.dy/2;
 a3c = robot.link3.dy/2;
-%beta = [.25*m1*o1^2+J1(3,3)+m2*(o1^2+.5*o2^2+o1*o2*cos(theta(2))+J2(3,3)),(m2*(.25*o2^2+.5*o1*o2*cos(theta(2)))+J2(3,3)) ; (m2*(.25*o2^2+.5*o1*o2*cos(theta(2))) +J2(3,3)), (.25*m2*o2^2+J2(3,3))];
-%delta =[u1;u2] - [-m2*sin(theta(2)),-.5*m2*o1*o2*sin(theta(1));-.5*m2*o1*o2*sin(theta(1)),0]*[thetadot(1)*thetadot(2);thetadot(2)^2]...
-   % -[.5*m1*o1*g*cos(theta(1))+m2*g*(.5*o2*cos(theta(1)+theta(2))+o1*cos(theta(1))) ; (.5*m2*o2*g*cos(theta(1)+theta(2)))];
 
-%Gamma = beta\delta;
-%thetadotdot = Gamma(1:2);
 
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%
+%  Incorrect 3 link case
+%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 % G1 = .25*(-2*g*(o1*(m1*2*(m2+m3))*cos(theta(1))+o2*(m2+2*m3)*cos(theta(1)+theta(2)) +o3*m3*cos(theta(1)+theta(2)+theta(3))) -o1*(o2*(m2+2*m3)*sin(theta(2)) +o3*m3*sin(theta(2)+theta(3)))*thetadot(2)*...
 %    (2*thetadot(1)+thetadot(2)) -2*o3*m3*(o2*sin(theta(3))+o1*sin(theta(2)+theta(3)))*(thetadot(1)+thetadot(2))*thetadot(3) - o3*m3*(o2*sin(theta(3)) +o1*sin(theta(2)+theta(3)))*thetadot(3)^2);
@@ -408,11 +369,11 @@ a3c = robot.link3.dy/2;
 % B2=(3/8)*(4*J2(3,3)+4*J3(3,3)+o3^2*m3+o2^2*(m2+4*m3)+4*o2*o3*m3*cos(theta(3)));
 % B3=(3/8)*(4*J3(3,3)+o3^2*m3+2*o2*o3*m3*cos(theta(3)));
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Working 2 link case
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % G1 = g*(a1c*m1+a1*m2)*cos(theta(1))+a2c*g*m2*cos(theta(1)+theta(2)) - a1*a2c*m2*sin(theta(2))*thetadot(2)*(2*thetadot(1)+thetadot(2));
 % A1 = (J1(3,3)+J2(3,3)+a1c^2*m1+(a1^2+a2c^2)*m2+2*a1*a2c*m2*cos(theta(2)));
 % A2 = (J2(3,3)+a2c^2*m2+a1*a2c*m2*cos(theta(2)));
@@ -437,11 +398,11 @@ a3c = robot.link3.dy/2;
 % thetadotdot(3) = 0;
 % %thetadotdot(1) = 0;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
-%Working 3 link case
+%   Working 3 link case
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 G1=a1c.*g.*m1.*cos(theta(1))+a1.*g.*m2.*cos(theta(1))+a1.*g.*m3.*cos(theta(1))+a2c.*g.*m2.*cos(theta(1)+theta(2))+a2.*g.*m3.*cos(theta(1)+theta(2))+a3c.*g.*m3.*cos(theta(1)+theta(2)+theta(3))+(-1).*a1.*((a2c.*m2+a2.*m3).*sin(theta(2))+a3c.*m3.*sin(theta(2)+theta(3))).*thetadot(2).^2+(-2).*a3c.*m3.*(a2.*sin(theta(3))+a1.*sin(theta(2)+theta(3))).*thetadot(2).*thetadot(3)+(-1).*a2.*a3c.*m3.*sin(theta(3)).*thetadot(3).^2+(-1).*a1.*a3c.*m3.*sin(theta(2)+theta(3)).*thetadot(3).^2+(-2).*thetadot(1).*(a1.*((a2c.*m2+a2.*m3).*sin(theta(2))+a3c.*m3.*sin(theta(2)+theta(3))).*thetadot(2)+a3c.*m3.*(a2.*sin(theta(3))+a1.*sin(theta(2)+theta(3))).*thetadot(3));
 A1=(J1+J2+J3+a1c.^2.*m1+a1.^2.*m2+a2c.^2.*m2+a1.^2.*m3+a2.^2.*m3+a3c.^2.*m3+2.*a1.*(a2c.*m2+a2.*m3).*cos(theta(2))+2.*a2.*a3c.*m3.*cos(theta(3))+2.*a1.*a3c.*m3.*cos(theta(2)+theta(3)));
@@ -471,11 +432,11 @@ thetadotdot = Gamma(1:3);
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
-%Involves the Drawing of the Robot
+% These Functions Involve the Drawing of the Robot
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 function actionRecord = StoreAction(actionRecord,action)
 actionRecord(:,end+1) = action;
 
