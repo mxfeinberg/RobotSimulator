@@ -8,40 +8,23 @@ params.snapshot_filename = 'snapshot.pdf';
 params.makemovie = false;
 params.makesnapshot = false;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
 %
-%      'J'  -- move in negative x direction
+%      'j'  -- move in negative x direction
 %
-%      'K'  -- move in positiive x direction
+%      'k'  -- move in positiive x direction
 %
-%      'Y'  -- move in positive y direction
+%      'y'  -- move in positive y direction
 %
-%      'H'  -- move in negative y direction
+%      'h'  -- move in negative y direction
 %
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+
 % Define the geometry and mass properties of the robot.
 robot = GetGeometryOfRobot;
 
-% Run the simulation.
-
-global pos
-global goal_theta
-global a1 a2 a3
-pos=[5;-10;0];
-a1 =4;
-a2 =4;
-a3 =4;
-syms theta2 theta3;
-
-k = atan2(pos(2),pos(1));
-[th2,th3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
-    pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
-
-goal_theta =[k,mod(double(th2),2*pi),mod(double(th3),2*pi)];
-
-
-RunSimulation(robot,params,0,0,goal_theta(1),0,0,goal_theta(2),0,0,goal_theta(3));
+RunSimulation(robot,params,0,0,0,0,0,0);
 
 function thetas = SolveOrientation(k,pos)
     global a1 a2 a3
@@ -49,14 +32,14 @@ function thetas = SolveOrientation(k,pos)
     k = atan2(pos(2),pos(1));
     [t2,t3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
     	pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
-    thetas=[mod(double(t2),2*pi),mod(double(t3),2*pi)];
+    thetas=[mod(double(t2),2*pi);mod(double(t3),2*pi)];
 
 function robot = GetGeometryOfRobot
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Sets up the Geometry of the robot
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 robot.base.dx=sqrt(2);
 robot.base.dy=sqrt(2);
 robot.base.dz=.5;
@@ -144,12 +127,14 @@ robot.link3.J_in3 =  robot.link3.m* [(robot.link3.dy^2 + robot.link3.dz^2)/12 0 
                                     0 0 (robot.link3.dy^2 + robot.link3.dx^2)/12];
 
 
-function RunSimulation(robot,params,err,w2,ref,err2,W22,ref2,err3,W32,ref3)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function RunSimulation(robot,params,err,w2,err2,W22,err3,W32)
+
+global action done pos goal_theta
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 %Set up the robot and set initial conditions
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 world = CreateFigure(robot,params);
 % Start time
 t = 0;
@@ -167,24 +152,31 @@ thetadot = [0;0;0];
 u1 = 0;
 u2 = 0;
 u3 = 0;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%initial goal positions
+x = 5;
+y = 5;
+pos = [x,y];
+k=atan2(pos(2),pos(1));
+goal_theta = [k;SolveOrientation(k,pos)];
+
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Records actions and makes a movie
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-global action done
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 action = [u1;u2;u3];
 if (params.makemovie)
     load(params.action_filename);
     myV = VideoWriter(params.movie_filename);
-    myV.Quality = 100;
+    myV.Quality = 40;
     open(myV);
 else
     actionRecord = [];
 end
 
 done = false;
-while (~done)
+
+while (~done) 
     
     if (params.makemovie)
         [actionRecord,curaction,done] = RetrieveAction(actionRecord);
@@ -193,82 +185,54 @@ while (~done)
         curaction = action;
         actionRecord = StoreAction(actionRecord,curaction);
     end
-    
-    
-    
-    
-    
-    global goal_theta
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
-% Computes the Input Torque
+%  Runs a PID controller on each of the joints
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    torque_limit=10000;
-
-   %%%%% PID for joint 1
-    k1 = 10000;
-    k2 = 1;
-    k3  = 300;
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    torque_limit=3000;
     
-    ref=goal_theta(1);
-    w1 = ref-theta(1);
-    err = (ref - theta(1))+err;
-    diff =(w1-w2)/dt;
+    k=[10000,1,300;1000,10,300;150,1,100];
+    w1=goal_theta-theta;
+    err=(goal_theta-theta)+err;
+    diff=(w1-w2)/dt;
     w2=w1;
-    u1 = k1*(ref-theta(1))+ k2*err+k3*diff;
+    U = k(:,1).*((goal_theta-theta))+err.*k(:,2)+diff.*k(:,3);
+    u1=U(1);
+    u2=U(2);
+    u3=U(3);
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++    
+%
+%  limits torques
+%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     if u1>torque_limit
         u1=torque_limit;
     elseif u1<-torque_limit
         u1=-torque_limit;
     end
     
-    %%%% PID for joint 2
-    k21 = 1000;
-    k22 = 10;
-    k23 = 300;
-    
-    ref2=goal_theta(2);
-    W21 = ref2-theta(2);
-    err2 = W21+err2;
-    diff2 = (W21-W22)/dt;
-    W22 = W21;
-    u2 = k21*(ref2-theta(2))+k22*err2+k23*diff2;
-    if u2>torque_limit
-        u2=torque_limit;
-    elseif u2<-torque_limit
-        u2=-torque_limit;
+    if u2>2*torque_limit/3
+        u2=2*torque_limit/3;
+    elseif u2<-2*torque_limit/3
+        u2=-2*torque_limit/3;
     end
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %
-    % PID for link 3
-    %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    k31 = 150;
-    k32 = 1;
-    k33 = 100;
-    
-    ref3=goal_theta(3);
-    W31 = ref3 - theta(3);
-    err3 = W31 + err3;
-    diff3 = (W31 - W32)/dt;
-    W32 = W31;
-    u3 = k31*W31 + k32*err3+k33*diff3;
-    if u3>torque_limit
-        u3=torque_limit;
-    elseif u3<-torque_limit
-        u3=-torque_limit;
+    if u3>torque_limit/3
+        u3=torque_limit/3;
+    elseif u3<-torque_limit/3
+        u3=-torque_limit/3;
     end
-    [t,theta,thetadot] = Simulate(t,dt,theta,thetadot,u1,u2,u3,robot);            
+    [t,theta,thetadot] = Simulate(t,dt,theta,thetadot,u1,u2,u3,robot); 
+    
+  
 	
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Calculates the position of the links in the initial frame
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     c1 = cos(theta(1));
     s1 = sin(theta(1));
  
@@ -298,11 +262,11 @@ while (~done)
     robot.link1.p_in0 = [o_1in0 o_1in0 o_1in0 o_1in0 o_1in0 o_1in0 o_1in0 o_1in0] + R_1in0*robot.link1.p_in1;
     robot.link2.p_in0 = [o_2in0 o_2in0 o_2in0 o_2in0 o_2in0 o_2in0 o_2in0 o_2in0] + R_2in0*robot.link2.p_in2;
     robot.link3.p_in0 = [o_3in0 o_3in0 o_3in0 o_3in0 o_3in0 o_3in0 o_3in0 o_3in0] + R_3in0*robot.link3.p_in3;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Updates the world and stores figure for movie 
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     % Update the figure.
     world = UpdateFigure(world,robot,o_1in0,R_1in0,o_2in0,R_2in0,o_3in0,R_3in0,u1,u2,u3,t,tmax);
     
@@ -337,13 +301,13 @@ if (params.makesnapshot)
 end
 
 function [thetadot,thetadotdot] = GetRates(theta,thetadot,u1,u2,u3,robot)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% Calculates the theta double dots using ode45 and derived equations of
-% motion
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%
+%   Sets up constants for equations of motion
+%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % inputs:
 %
 %   theta       3x1 matrix of joint angles
@@ -375,13 +339,13 @@ a3 = robot.link3.dy;
 a1c = robot.link1.dy/2;
 a2c = robot.link2.dy/2;
 a3c = robot.link3.dy/2;
-%beta = [.25*m1*o1^2+J1(3,3)+m2*(o1^2+.5*o2^2+o1*o2*cos(theta(2))+J2(3,3)),(m2*(.25*o2^2+.5*o1*o2*cos(theta(2)))+J2(3,3)) ; (m2*(.25*o2^2+.5*o1*o2*cos(theta(2))) +J2(3,3)), (.25*m2*o2^2+J2(3,3))];
-%delta =[u1;u2] - [-m2*sin(theta(2)),-.5*m2*o1*o2*sin(theta(1));-.5*m2*o1*o2*sin(theta(1)),0]*[thetadot(1)*thetadot(2);thetadot(2)^2]...
-   % -[.5*m1*o1*g*cos(theta(1))+m2*g*(.5*o2*cos(theta(1)+theta(2))+o1*cos(theta(1))) ; (.5*m2*o2*g*cos(theta(1)+theta(2)))];
 
-%Gamma = beta\delta;
-%thetadotdot = Gamma(1:2);
 
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%
+%  Incorrect 3 link case
+%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 % G1 = .25*(-2*g*(o1*(m1*2*(m2+m3))*cos(theta(1))+o2*(m2+2*m3)*cos(theta(1)+theta(2)) +o3*m3*cos(theta(1)+theta(2)+theta(3))) -o1*(o2*(m2+2*m3)*sin(theta(2)) +o3*m3*sin(theta(2)+theta(3)))*thetadot(2)*...
 %    (2*thetadot(1)+thetadot(2)) -2*o3*m3*(o2*sin(theta(3))+o1*sin(theta(2)+theta(3)))*(thetadot(1)+thetadot(2))*thetadot(3) - o3*m3*(o2*sin(theta(3)) +o1*sin(theta(2)+theta(3)))*thetadot(3)^2);
@@ -407,11 +371,11 @@ a3c = robot.link3.dy/2;
 % B2=(3/8)*(4*J2(3,3)+4*J3(3,3)+o3^2*m3+o2^2*(m2+4*m3)+4*o2*o3*m3*cos(theta(3)));
 % B3=(3/8)*(4*J3(3,3)+o3^2*m3+2*o2*o3*m3*cos(theta(3)));
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
 % Working 2 link case
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 % G1 = g*(a1c*m1+a1*m2)*cos(theta(1))+a2c*g*m2*cos(theta(1)+theta(2)) - a1*a2c*m2*sin(theta(2))*thetadot(2)*(2*thetadot(1)+thetadot(2));
 % A1 = (J1(3,3)+J2(3,3)+a1c^2*m1+(a1^2+a2c^2)*m2+2*a1*a2c*m2*cos(theta(2)));
 % A2 = (J2(3,3)+a2c^2*m2+a1*a2c*m2*cos(theta(2)));
@@ -436,11 +400,11 @@ a3c = robot.link3.dy/2;
 % thetadotdot(3) = 0;
 % %thetadotdot(1) = 0;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
-%Working 3 link case
+%   Working 3 link case
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 G1=a1c.*g.*m1.*cos(theta(1))+a1.*g.*m2.*cos(theta(1))+a1.*g.*m3.*cos(theta(1))+a2c.*g.*m2.*cos(theta(1)+theta(2))+a2.*g.*m3.*cos(theta(1)+theta(2))+a3c.*g.*m3.*cos(theta(1)+theta(2)+theta(3))+(-1).*a1.*((a2c.*m2+a2.*m3).*sin(theta(2))+a3c.*m3.*sin(theta(2)+theta(3))).*thetadot(2).^2+(-2).*a3c.*m3.*(a2.*sin(theta(3))+a1.*sin(theta(2)+theta(3))).*thetadot(2).*thetadot(3)+(-1).*a2.*a3c.*m3.*sin(theta(3)).*thetadot(3).^2+(-1).*a1.*a3c.*m3.*sin(theta(2)+theta(3)).*thetadot(3).^2+(-2).*thetadot(1).*(a1.*((a2c.*m2+a2.*m3).*sin(theta(2))+a3c.*m3.*sin(theta(2)+theta(3))).*thetadot(2)+a3c.*m3.*(a2.*sin(theta(3))+a1.*sin(theta(2)+theta(3))).*thetadot(3));
 A1=(J1+J2+J3+a1c.^2.*m1+a1.^2.*m2+a2c.^2.*m2+a1.^2.*m3+a2.^2.*m3+a3c.^2.*m3+2.*a1.*(a2c.*m2+a2.*m3).*cos(theta(2))+2.*a2.*a3c.*m3.*cos(theta(3))+2.*a1.*a3c.*m3.*cos(theta(2)+theta(3)));
@@ -470,11 +434,11 @@ thetadotdot = Gamma(1:3);
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 %
-%Involves the Drawing of the Robot
+% These Functions Involve the Drawing of the Robot
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 function actionRecord = StoreAction(actionRecord,action)
 actionRecord(:,end+1) = action;
 
@@ -594,33 +558,31 @@ world.view0.frame3 = DrawFrame(world.view0.frame3,o_3in0,R_3in0);
 drawnow
 
 function onkeypress_nokeypad(src,event)
-global action
-global pos
-global goal_theta done
+global pos goal_theta done
 du = 1;
 if event.Character == 'j'
-    if (pos(1)+du)^2+pos(2)^2<12^2
-        pos(1)=pos(1)+du;
-        k=atan2(pos(2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
-    end
-elseif event.Character == 'k'
     if (pos(1)-du)^2+pos(2)^2<12^2
         pos(1)=pos(1)-du;
         k=atan2(pos(2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
+        goal_theta=[k;SolveOrientation(k,pos)];
+    end
+elseif event.Character == 'k'
+    if (pos(1)+du)^2+pos(2)^2<12^2
+        pos(1)=pos(1)+du;
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k;SolveOrientation(k,pos)];
     end
 elseif event.Character == 'y'
     if pos(1)^2+(pos(2)+du)^2<12^2
         pos(2)=pos(2)+du;
         k=atan2(pos(2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
+        goal_theta=[k;SolveOrientation(k,pos)];
     end
 elseif event.Character == 'h'
     if pos(1)^2+(pos(2)-du)^2<12^2
         pos(2)=pos(2)-du;
-        k=atan2(pos(s2),pos(1));
-        goal_theta=[k,SolveOrientation(k,pos)];
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k;SolveOrientation(k,pos)];
     end
 elseif event.Character == 'q'
     done = true;
