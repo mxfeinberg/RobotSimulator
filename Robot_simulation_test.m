@@ -10,16 +10,17 @@ params.makesnapshot = false;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-%      'J'  -- move in negative x direction
+%      'j'  -- move in negative x direction
 %
-%      'K'  -- move in positiive x direction
+%      'k'  -- move in positiive x direction
 %
-%      'Y'  -- move in positive y direction
+%      'y'  -- move in positive y direction
 %
-%      'H'  -- move in negative y direction
+%      'h'  -- move in negative y direction
 %
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Define the geometry and mass properties of the robot.
 robot = GetGeometryOfRobot;
 
