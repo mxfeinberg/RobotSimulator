@@ -28,24 +28,32 @@ robot = GetGeometryOfRobot;
 
 % Run the simulation.
 
+global pos
+global goal_theta
+global a1 a2 a3
 pos=[5;-10;0];
-a1 = 4;
+a1 =4;
 a2 =4;
 a3 =4;
 syms theta2 theta3;
 
 k = atan2(pos(2),pos(1));
-[theta2,theta3]=solve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
+[th2,th3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
     pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
 
-goal_theta =[k,mod(double(theta2),2*pi),mod(double(theta3),2*pi)];
+goal_theta =[k,mod(double(th2),2*pi),mod(double(th3),2*pi)];
 
 
 RunSimulation(robot,params,0,0,goal_theta(1),0,0,goal_theta(2),0,0,goal_theta(3));
-function [wedge] = wedge(vector)
-wedge = [0 -vector(3) vector(2);
-         vector(3) 0 vector(1);
-         -vector(2) vector(1) 0];
+
+function thetas = SolveOrientation(k,pos)
+    global a1 a2 a3
+    syms theta2 theta3;
+    k = atan2(pos(2),pos(1));
+    [t2,t3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
+    	pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
+    thetas=[mod(double(t2),2*pi),mod(double(t3),2*pi)];
+
 function robot = GetGeometryOfRobot
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -193,43 +201,49 @@ while (~done)
     
     
     
-    
-    
+    global goal_theta
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % Computes the Input Torque
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    u1 = curaction(1);
+    torque_limit=10000;
+
    %%%%% PID for joint 1
     k1 = 10000;
     k2 = 1;
     k3  = 300;
     
-    rate = 0;    
-    ref = ref + rate*dt;
+    ref=goal_theta(1);
     w1 = ref-theta(1);
     err = (ref - theta(1))+err;
     diff =(w1-w2)/dt;
     w2=w1;
     u1 = k1*(ref-theta(1))+ k2*err+k3*diff;
+    if u1>torque_limit
+        u1=torque_limit;
+    elseif u1<-torque_limit
+        u1=-torque_limit;
+    end
     
-    u2 = curaction(2);
     %%%% PID for joint 2
     k21 = 1000;
     k22 = 10;
     k23 = 300;
     
-    rate2 = 0;
-    ref2 = ref2+rate2*dt;
+    ref2=goal_theta(2);
     W21 = ref2-theta(2);
     err2 = W21+err2;
     diff2 = (W21-W22)/dt;
     W22 = W21;
     u2 = k21*(ref2-theta(2))+k22*err2+k23*diff2;
+    if u2>torque_limit
+        u2=torque_limit;
+    elseif u2<-torque_limit
+        u2=-torque_limit;
+    end
     
-    u3 = curaction(3);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
     % PID for link 3
@@ -240,11 +254,17 @@ while (~done)
     k32 = 1;
     k33 = 100;
     
+    ref3=goal_theta(3);
     W31 = ref3 - theta(3);
     err3 = W31 + err3;
     diff3 = (W31 - W32)/dt;
     W32 = W31;
     u3 = k31*W31 + k32*err3+k33*diff3;
+    if u3>torque_limit
+        u3=torque_limit;
+    elseif u3<-torque_limit
+        u3=-torque_limit;
+    end
     [t,theta,thetadot] = Simulate(t,dt,theta,thetadot,u1,u2,u3,robot);            
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -440,9 +460,9 @@ C1=(J3+a3c.^2.*m3+a2.*a3c.*m3.*cos(theta(3))+a1.*a3c.*m3.*cos(theta(2)+theta(3))
 C2=(J3+a3c.^2.*m3+a2.*a3c.*m3.*cos(theta(3)));
 C3=(J3+a3c.^2.*m3);
 
-beta = [A1 A2 A3; B1 B2 B3; C1 C2 C3];
-delta = [u1 - G1;u2 - G2;u3 - G3];
-Gamma = beta\delta;
+Beta = [A1 A2 A3; B1 B2 B3; C1 C2 C3];
+Delta = [u1 - G1;u2 - G2;u3 - G3];
+Gamma = Beta\Delta;
 
 
 thetadotdot = Gamma(1:3);
@@ -540,8 +560,9 @@ axis off;
 fs = 10;
 world.text.label=text(0.15,0.95,'view: frame 0','fontweight','bold','fontsize',fs);
 world.text.time=text(0.05,0.1,sprintf('t = %6.2f / %6.2f\n',0,0),'fontsize',fs,'verticalalignment','top','fontname','monaco');
+world.text.pos=text(0.01,0.95,sprintf('t = %6.2f / %6.2f\n',0,0),'fontsize',fs,'verticalalignment','top','fontname','monaco');
 %world.text.teamname=text(0.05,0.04,params.teamname,'fontsize',fs,'verticalalignment','top','fontweight','bold');
-world.text.torques=text(0.8,0.02,sprintf('u_1 = %6.1f\nu_2 = %6.1f\nu_3 = %6.1f',0,0,0),'fontsize',fs,'fontname','monaco','verticalalignment','bottom');
+world.text.torques=text(0.85,0.02,sprintf('u_1 = %6.1f\nu_2 = %6.1f\nu_3 = %6.1f',0,0,0),'fontsize',fs,'fontname','monaco','verticalalignment','bottom');
 % - view from frame 0
 axes('position',[0.05 0.05 .9 1]);
 set(gcf,'renderer','opengl');
@@ -564,6 +585,7 @@ world.view0.light = light('position',zeros(3,1)','style','local');
 set(gcf,'KeyPressFcn',@onkeypress_nokeypad);
 
 function world = UpdateFigure(world,robot,o_1in0,R_1in0,o_2in0,R_2in0,o_3in0,R_3in0,u1,u2,u3,t,tmax)
+global pos
 world.view0.robot = DrawRobot(world.view0.robot,robot,o_1in0,R_1in0,o_2in0,R_2in0);
 world.view0.frame1 = DrawFrame(world.view0.frame1,o_1in0,R_1in0);
 world.view0.frame2 = DrawFrame(world.view0.frame2,o_2in0,R_2in0);
@@ -571,23 +593,38 @@ world.view0.frame3 = DrawFrame(world.view0.frame3,o_3in0,R_3in0);
  set(world.view0.light,'position',([0;1;0])');
  set(world.text.time,'string',sprintf('t = %6.2f / %6.2f\n',t,tmax));
  set(world.text.torques,'string',sprintf('u_1 = %6.1f\nu_2 = %6.1f\nu_3 = %6.1f',u1,u2,u3));
+ set(world.text.pos,'string',sprintf('x = %6.1f\ny = %6.1f\n',pos(1),pos(2)));
 drawnow
 
 function onkeypress_nokeypad(src,event)
-global action done
-du = .5;
-if event.Character == '1'
-    action(1,1) = action(1,1)+du;
-elseif event.Character == '!'
-    action(1,1) = action(1,1)-du;
-elseif event.Character == '2'
-    action(2,1) = action(2,1)+du;
-elseif event.Character == '@'
-    action(2,1) = action(2,1)-du;
-elseif event.Character == '3'
-    action(3,1) = action(3,1)+du;
-elseif event.Character == '#'
-    action(3,1) = action(3,1)-du;
+global action
+global pos
+global goal_theta done
+du = 1;
+if event.Character == 'j'
+    if (pos(1)+du)^2+pos(2)^2<12^2
+        pos(1)=pos(1)+du;
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k,SolveOrientation(k,pos)];
+    end
+elseif event.Character == 'k'
+    if (pos(1)-du)^2+pos(2)^2<12^2
+        pos(1)=pos(1)-du;
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k,SolveOrientation(k,pos)];
+    end
+elseif event.Character == 'y'
+    if pos(1)^2+(pos(2)+du)^2<12^2
+        pos(2)=pos(2)+du;
+        k=atan2(pos(2),pos(1));
+        goal_theta=[k,SolveOrientation(k,pos)];
+    end
+elseif event.Character == 'h'
+    if pos(1)^2+(pos(2)-du)^2<12^2
+        pos(2)=pos(2)-du;
+        k=atan2(pos(s2),pos(1));
+        goal_theta=[k,SolveOrientation(k,pos)];
+    end
 elseif event.Character == 'q'
     done = true;
 end
