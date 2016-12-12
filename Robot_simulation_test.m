@@ -27,11 +27,15 @@ robot = GetGeometryOfRobot;
 RunSimulation(robot,params,0,0,0,0,0,0);
 
 function thetas = SolveOrientation(k,pos)
-    global a1 a2 a3
+    a1 = 4;
+    a2 = 4;
+    a3 = 4;
     syms theta2 theta3;
+    
     k = atan2(pos(2),pos(1));
-    [t2,t3]=vpasolve([pos(1)-a1*cos(k)==a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
-    	pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)]);
+    [t2,t3]=vpasolve([pos(1)-a1*cos(k)== a2*cos(k+theta2)+a3*cos(k+theta2+theta3),...
+    	pos(2)-a1*sin(k)==a2*sin(k+theta2)+a3*sin(k+theta2+theta3)],[theta2,theta3]);
+    
     thetas=[mod(double(t2),2*pi);mod(double(t3),2*pi)];
 
 function robot = GetGeometryOfRobot
@@ -145,7 +149,7 @@ dt = 2e-2;
 tmax = 100;
 
 % joint positions
-theta = [pi/2;pi;pi];
+theta = [0;0;0];
 % joint velocities
 thetadot = [0;0;0];
 % intial torques
@@ -157,6 +161,7 @@ x = 5;
 y = 5;
 pos = [x,y];
 k=atan2(pos(2),pos(1));
+
 goal_theta = [k;SolveOrientation(k,pos)];
 
 %% ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -191,9 +196,9 @@ while (~done)
 %  Runs a PID controller on each of the joints
 %
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    torque_limit=3000;
+    torque_limit=2000;
     
-    k=[10000,1,300;1000,10,300;150,1,100];
+    k=[8000,1,2000;3000,10,800;500,1,300];
     w1=goal_theta-theta;
     err=(goal_theta-theta)+err;
     diff=(w1-w2)/dt;
