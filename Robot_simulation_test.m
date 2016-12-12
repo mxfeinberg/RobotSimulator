@@ -8,21 +8,18 @@ params.snapshot_filename = 'snapshot.pdf';
 params.makemovie = false;
 params.makesnapshot = false;
 
-% - NOTE: The keyboard interface is as follows:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-%   'q'         causes the simulation to quit (gracefully, saving the
-%               actions, the movie, and/or the snapshot)
-% 
-%   '1'         increases the torque applied to link 1 at the first joint
-%   '!'         decreases the torque applied to link 1 at the first joint
+%      'J'  -- move in negative x direction
 %
-%   '2'         increases the torque applied to link 2 at the second joint
-%   '@'         decreases the torque applied to link 2 at the second joint
+%      'K'  -- move in positiive x direction
 %
-%   '3'         increases the torque applied to link 3 at the third joint
-%   '#'         decreases the torque applied to link 3 at the third joint
+%      'Y'  -- move in positive y direction
 %
-
+%      'H'  -- move in negative y direction
+%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Define the geometry and mass properties of the robot.
 robot = GetGeometryOfRobot;
 
