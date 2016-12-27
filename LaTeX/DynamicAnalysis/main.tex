@@ -1,0 +1,657 @@
+\documentclass[a4paper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{enumerate}
+\usepackage{caption}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{advdate}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage[margin=0.65in]{geometry}
+\usepackage{color}%red, green, blue, yellow, cyan, magenta, black, white
+\usetikzlibrary{patterns}
+\definecolor{mygreen}{RGB}{28,172,0}% color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},%
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},%
+    showstringspaces=false,%without this there will be a symbol in the places where there is a space
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+\lstset{language=Mathematica,basicstyle={\sffamily\footnotesize},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=5pt,
+  breaklines=true,
+  captionpos={t},
+  frame={lines},
+  rulecolor=\color{black},
+  framerule=0.5pt,
+  columns=flexible,
+  tabsize=2
+}
+
+
+
+
+\title{AE 352: Final Project}
+
+\author{Max A. Feinberg \and Steven P. Schlax \and  Samuel T. Wagner}
+
+\date{\AdvanceDate[-1]\today}
+
+
+
+\begin{document}
+
+\newcommand{\nvar}[2]{%
+    \newlength{#1}
+    \setlength{#1}{#2}
+}
+
+% Define a few constants for drawing
+\nvar{\dg}{0.3cm}
+\def\dw{0.25}\def\dh{0.5}
+\nvar{\ddx}{1.5cm}
+
+% Define commands for links, joints and such
+\def\link{\draw [double distance=1.5mm, very thick] (0,0)--}
+\def\joint{%
+    \filldraw [fill=white] (0,0) circle (5pt);
+    \fill[black] circle (2pt);
+}
+\def\grip{%
+    \draw[ultra thick](0cm,\dg)--(0cm,-\dg);
+    \fill (0cm, 0.5\dg)+(0cm,1.5pt) -- +(0.6\dg,0cm) -- +(0pt,-1.5pt);
+    \fill (0cm, -0.5\dg)+(0cm,1.5pt) -- +(0.6\dg,0cm) -- +(0pt,-1.5pt);
+}
+\def\robotbase{%
+    \draw[rounded corners=8pt] (-\dw,-\dh)-- (-\dw, 0) --
+        (0,\dh)--(\dw,0)--(\dw,-\dh);
+    \draw (-0.5,-\dh)-- (0.5,-\dh);
+    \fill[pattern=north east lines] (-0.5,-1) rectangle (0.5,-\dh);
+}
+
+% Draw an angle annotation
+% Input:
+%   #1 Angle
+%   #2 Label
+% Example:
+%   \angann{30}{$\theta_1$}
+\newcommand{\angann}[2]{%
+    \begin{scope}[red]
+    \draw [dashed, red] (0,0) -- (1.2\ddx,0pt);
+    \draw [->, shorten >=3.5pt] (\ddx,0pt) arc (0:#1:\ddx);
+    % Unfortunately automatic node placement on an arc is not supported yet.
+    % We therefore have to compute an appropriate coordinate ourselves.
+    \node at (#1/2-2:\ddx+8pt) {#2};
+    \end{scope}
+}
+
+% Draw line annotation
+% Input:
+%   #1 Line offset (optional)
+%   #2 Line angle
+%   #3 Line length
+%   #5 Line label
+% Example:
+%   \lineann[1]{30}{2}{$L_1$}
+\newcommand{\lineann}[4][0.5]{%
+    \begin{scope}[rotate=#2, blue,inner sep=2pt]
+        \draw[dashed, blue!40] (0,0) -- +(0,#1)
+            node [coordinate, near end] (a) {};
+        \draw[dashed, blue!40] (#3,0) -- +(0,#1)
+            node [coordinate, near end] (b) {};
+        \draw[|<->|] (a) -- node[fill=white] {#4} (b);
+    \end{scope}
+}
+
+% Define the kinematic parameters of the three link manipulator.
+\def\thetaone{30}
+\def\Lone{2}
+\def\thetatwo{20}
+\def\Ltwo{2}
+\def\thetathree{40}
+\def\Lthree{1}
+
+
+
+
+
+
+
+
+
+\maketitle
+
+\section*{Motivation}
+
+The primary motivation of our project is to better our understanding of the Lagrangian method and general dynamic system computer simulation.  We hope to use this project to develop practical skills that will help us in modeling general dynamic systems and improve our programming skills. We decided to model a multi-link robot manipulator because it is a realistic device with numerous applications in a variety of fields including aerospace, manufacturing, and medicine.
+
+
+\section*{Approach}
+
+
+\noindent
+We will consider a 3-link planar robot arm with revolute joints:\\
+
+\noindent The x and y positions of the end-effector can be defined as:
+$$x = a_1\cos(\theta_1) + a_2\cos(\theta_1 + \theta_2) + a_3\cos(\theta_1 + \theta_2 + \theta_3)$$
+$$y = a_1\sin(\theta_1) + a_2\sin(\theta_1 + \theta_2) + a_3\sin(\theta_1 + \theta_2 + \theta_3)$$
+
+\noindent From these equations, we can derive the following Jacobian Matrices:
+$$J_{v_1} = \begin{bmatrix}
+			  -\frac{a_1}{2}s_1 & 0 & 0\\
+              \frac{a_1}{2}c_1 & 0 & 0\\
+              0 & 0 & 0\\
+			  \end{bmatrix}, \ 
+              J_{v_2}  = \begin{bmatrix}
+			  -a_1s_1 -\frac{a_2}{2}s_{12} & - \frac{a_2}{2} s_{12} & 0\\
+              a_1 c_1 + \frac{a_2}{2}c_{12} & \frac{a_2}{2}c_{12} & 0 \\
+              0 & 0 & 0\\
+			  \end{bmatrix}$$ 
+$$ \ J_{v_3}  = \begin{bmatrix}
+			  -a_1s_1 -\frac{a_2}{2}s_{12} -a_3s_{123} & - \frac{a_2}{2} s_{12} -\frac{a_3}{2}s_{123} & -\frac{a_3}{2}s_{123}\\
+              a_1 c_1 + \frac{a_2}{2}c_{12} + \frac{a_3}{2}c_{123} & \frac{a_2}{2}c_{12} + \frac{a_3}{2}c_{123}  & \frac{a_3}{2}c_{123} \\
+              0 & 0 & 0\\
+			  \end{bmatrix} $$
+$$ J_{\omega_1} = \begin{bmatrix}
+			  0 & 0 & 0\\
+              0 & 0 & 0\\
+              1 & 0 & 0\\
+			  \end{bmatrix}, \ J_{\omega_2} = \begin{bmatrix}
+			  0 & 0 & 0\\
+              0 & 0 & 0\\
+              1 & 1 & 0\\
+			  \end{bmatrix}, \
+              J_{\omega_1} = \begin{bmatrix}
+			  0 & 0 & 0\\
+              0 & 0 & 0\\
+              1 & 1 & 1\\
+			  \end{bmatrix}$$
+From these matrices, we can define a multibody inertia matrix:
+$$ H = \sum_{i=1}^n \Big(m_i J_{v_i}^T J_{v_i} + J_{\omega_i}^T I_i J_{\omega_i} \Big) $$
+With this, we can now define the terms of the Lagrangian equation as follows:
+$$\frac{d}{dt} \Big( \frac{\partial L}{\partial \dot{q}_i} \Big) = \sum_{j=1}^{n} \Big( \sum_{k=1}^{n} \frac{\partial H_{ij}}{\partial q_k} \dot{q}_k \dot{q}_j + H_{ij} \ddot{q}_j \Big)$$
+
+$$\frac{\partial L}{\partial q_i} = - \frac{\partial U}{ \partial q_i}$$
+
+\noindent The derivation for these equations can be found in the appendix.
+
+\clearpage
+
+\noindent The result of using the Lagrangian method for an n-link robot arm can be generalized as 
+$$\sum_{j=1}^n H_{kj}(q) \ddot{q}_j + \sum_{i=1}^n \sum_{j=1}^n c_{ijk}(q)\dot{q}_i\dot{q}_j + g_k(q) = \tau_k, \ k = 1, \cdots , n$$
+$$c_{ijk} = \frac{1}{2}
+\Big( \frac{\partial H_{kj} }{\partial q_{i} } + \frac{\partial H_{ki}}{\partial q_{j}} - \frac{\partial H_{ij}}{\partial q_{k}} \Big) $$
+
+\noindent Where the coefficient $c_{ijk}$ are referred to as the Christoffel symbols.  These equations can be used to find the equations of motion for a given robot arm.\\ 
+
+
+
+\section*{Results}
+
+\noindent Using Mathematica, we solved the equations defined above and obtained the following equations of motion: 
+$$a_i = \textrm{length of the} \ i^{th} \ \textrm{link}, \quad  m_i = \textrm{mass of the} \ i^{th} \ \textrm{link}$$
+$$a_{ic} = \textrm{length to the center of mass of the} \ i^{th} \ \textrm{link}, \quad, \quad  I_i = I_{zz} \  \textrm{moment of inertia of the} \ i^{th} \ \textrm{link}$$
+\begin{eqnarray*}
+\tau_1 & = & \alpha \ddot{\theta}_1 + \beta \ddot{\theta}_2 + \gamma \ddot{\theta}_3 + \varepsilon \dot{\theta}_1 \dot{\theta}_2 + \eta \dot{\theta}_1 \dot{\theta}_3 + \zeta \dot{\theta}_2 \dot{\theta}_3 + \xi \dot{\theta}_2^2 + \sigma \dot{\theta}_3^2 + \mu \\
+\alpha & = & I_1 + I_2 + I_3 + m_3 (a_1^2+a_2^2+a_{3c}^2)+m_2(a_1^2+a_{2c}^2)+2a_1c_2(a_2 m_3+a_{2c}m_2)+2a_{3c}m_3(a_1c_{23}+a_2c_3)+a_{1c}^2 m_1+\\
+& & +a_2^2 (m_2+4 m_3)+a_3^2 m_3+4 I_1+4 I_2+4 I_3 )\\
+\beta & = & I_2 + I_3 + a_1c_2( a_2m_3+a_{2c}m_)+ a_1a_{3c} m_3 c_{23}+m_3(a_2^2+a_{3c}^2)+2a_2a_{3c} m_3c_3+a_{2c}^2 m_2\\
+\gamma & = & I_3 + a_1 a_{3c} m_3 c_{23} + a_2 a_{3c} m_3c_3 +a_{3c}^2 m_3+\\
+\varepsilon & = & -2 a_1(s_2 (a_2 m_3+a_{2c} m_2)+a_{3c} m_3 s_{23})\\
+\eta & = & -2 a_{3c} m_3 a_1 s_{23}+a_2 s_3\\
+\zeta & = & -2 a_{3c} m_3 a_1 s_{23} +a_2 s_3 \\
+\xi & = & -a_1 a_2 m_3 s_2 - a_1 a_{2c} m_2 s_2 -a_1 a_{3c} m_3 sin_{23}\\
+\sigma & = & -a_{3c} m_3 a_1 s_{23}+a_2 s_3\\
+\mu & = & c_1 (a_1(m_2+m_3)+a_{1c} m_1)+(a_2 m_3+a_{2c} m_2) c_{12} +a_{3c}m_3c_{123}\\
+\end{eqnarray*}
+
+\begin{eqnarray*}
+\tau_2 & = & \alpha \ddot{\theta}_1 + \beta \ddot{\theta}_2 + \gamma \ddot{\theta}_3 + \varepsilon \dot{\theta}_1 \dot{\theta}_2 + \eta \dot{\theta}_1 \dot{\theta}_3 + \zeta \dot{\theta}_2 \dot{\theta}_3 + \xi \dot{\theta}_1^2 + \sigma \dot{\theta}_3^2 + \mu \\
+\alpha & = & (I_2 + I_3 + a_{2c}^2 m_2 + a_2^2 m_3 + a_{3c}^2 m_3 + a_1(a_{2c} m_2 + a_2 m_3)c_2 + 2 a_2 a_{3c} m_3 c_3 + a_1 a_{3c} m_3 c_{23})\\
+\beta & = & (I_2 + I_3 + a_{2c}^2 m_2 + a_2^2 m_3 + a{3c}^2 m_3 + 2 a_2 a_{3c} m_3 c_3)\\
+\gamma & = & (I_3 a_{3c}^2 m_3 + a_2 a_{3c} m_3 c_3)\\
+\varepsilon & = & 0\\
+\eta & = & -2 a_2 a_{3c} m_3 s_3\\
+\zeta & = & -2 a_2 a_{3c} m_3 s_3 \\
+\xi & = & a_1 a_2 m_3 s_{12} + a_1 a_{2c} m_2 s_2 + a_1 a_{3c} m_3s_{23} \\
+\sigma & = & -a_2 a_{3c} m_3 s_3\\
+\mu & = & (a_2 m_3 a_{2c} m_2) c_{12}+a_{3c} m_3 c_{123}\\
+\end{eqnarray*}
+
+\begin{eqnarray*}
+\tau_3 & = & \alpha \ddot{\theta}_1 + \beta \ddot{\theta}_2 + \gamma \ddot{\theta}_3 + \varepsilon \dot{\theta}_1 \dot{\theta}_2 + \eta \dot{\theta}_1 \dot{\theta}_3 + \zeta \dot{\theta}_2 \dot{\theta}_3 + \xi \dot{\theta}_1^2 + \sigma \dot{\theta}_2^2 + \mu \\
+\alpha & = & (I_3 + a_{3c}^2 m_3 + a_2 a{3c} m_3 c_3 + a_1 a_{3c} m_3 c_{23} )\\
+\beta & = & I_3 a_{3c}^2 m_3 + a_2 a_{3c} m_3 c_3\\
+\gamma & = & I_3 +a_{3c}^2 m_3\\
+\varepsilon & = & a_2 a_{3c} m_3 s_3\\
+\eta & = & 0\\
+\zeta & = & 0\\
+\xi & = & a_1 a_{3} m_3 s_2 c_3 + a_1 a_{3c} m_3 c_2 s_{23} + a_2 a_{3c} m_3 s_3 \\
+\sigma & = & a_2 a_{3c} m_3 s_3\\
+\mu & = & a_{c3} m_3 c_{123}\\
+\end{eqnarray*}
+
+\noindent Using these equations of motion we were able to develop a MATLAB simulation of the motion of a three-link robot arm with  specific input torques.
+
+\section*{Discussion}
+
+After testing our simulation with different torques, we noticed that with no torques added, the system behaved similarly to a triple pendulum. When torques were added to the system via user input, the system tended to produce undesirable, chaotic results. In order to increase our control over the system, we implemented simple PID controllers for each joint to apply the torques to the system in order to stabilize the robot arm to a specific orientation. Overall, we are pleased with how the project turned out, and we feel that we met our goals of increasing our systems modeling knowledge and programming skills.  The code base is also in a good position to be further generalized; it is currently open source and available on \href{http://www.sharelatex.com}{github} .\\
+
+\section*{Work Distribution}
+
+The total work for the project was very evenly distributed, and essentially every member of the group worked on every aspect of the project.  Max focused on the derivation of the equations of motion, the implementation of mathematical code in MATLAB, and the final report and presentation.  Steven focused on the derivation of the equations of motion and implementation of the equations in Mathematica.  Sam did the majority of the MATLAB simulator code and also implemented the PID control. 
+
+\begin{figure}[ht]
+\caption{A 3-Link Planar Robot Arm}
+\begin{center}
+\begin{tikzpicture}
+    \robotbase
+    \angann{\thetaone}{$\theta_1$}
+    \lineann[0.7]{\thetaone}{\Lone}{$L_1$}
+    \link(\thetaone:\Lone);
+    \joint
+    \begin{scope}[shift=(\thetaone:\Lone), rotate=\thetaone]
+        \angann{\thetatwo}{$\theta_2$}
+        \lineann[-1.5]{\thetatwo}{\Ltwo}{$L_2$}
+        \link(\thetatwo:\Ltwo);
+        \joint
+        \begin{scope}[shift=(\thetatwo:\Ltwo), rotate=\thetatwo]
+            \angann{\thetathree}{$\theta_3$}
+            \lineann[0.7]{\thetathree}{\Lthree}{$L_3$}
+            \draw [dashed, red,rotate=\thetathree] (0,0) -- (1.2\ddx,0pt);
+            \link(\thetathree:\Lthree);
+            \joint
+            \begin{scope}[shift=(\thetathree:\Lthree), rotate=\thetathree]
+                \grip
+            \end{scope}
+        \end{scope}
+    \end{scope}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+
+\newpage
+
+\section*{Appendix}
+
+\noindent Derivation of the Jacobian relating the end effector velocity to the world frame.
+
+\begin{eqnarray*}
+J & = & \begin{bmatrix}
+		z^0_0 \times (O^0_3 - O_0^0) & z^0_1 \times (O^0_3 - O_1^0) & z^0_2 \times (O^0_3 - O_2^0)\\
+        z_0^0 & z^0_1 & z^0_2\\
+        \end{bmatrix}\\
+T^0_1 & = & \begin{bmatrix}
+ 			\cos(\theta_1) & -\sin(\theta_1) & 0 & a_1\cos(\theta_1)\\
+            \sin(\theta_1) & \cos(\theta_1) & 0 & a_1\sin(\theta_1)\\
+            0 & 0 & 1 & 0\\
+            0 & 0 & 0 & 1\\
+			\end{bmatrix} \\
+T^1_2 & = & \begin{bmatrix}
+ 			\cos(\theta_2) & -\sin(\theta_2) & 0 & a_2\cos(\theta_2)\\
+            \sin(\theta_2) & \cos(\theta_2) & 0 & a_2\sin(\theta_2)\\
+            0 & 0 & 1 & 0\\
+            0 & 0 & 0 & 1\\
+			\end{bmatrix} \\
+T^2_3 & = & \begin{bmatrix}
+ 			\cos(\theta_3) & -\sin(\theta_3) & 0 & a_3\cos(\theta_3)\\
+            \sin(\theta_3) & \cos(\theta_3) & 0 & a_3\sin(\theta_3)\\
+            0 & 0 & 1 & 0\\
+            0 & 0 & 0 & 1\\
+			\end{bmatrix} \\
+T^0_2 & = & \begin{bmatrix}
+ 			\cos(\theta_1 + \theta_2) & - \sin(\theta_1 + \theta_2) & 0 & a_1\cos(\theta_1) + a_2\cos(\theta_1 + \theta_2)\\
+            \sin(\theta_1 + \theta_2) &  \cos(\theta_1 + \theta_2) & 0 & a_1\sin(\theta_1) + a_2\sin(\theta_1 + \theta_2)\\
+            0 & 0 & 1 & 0\\
+            0 & 0 & 0 & 1\\
+			\end{bmatrix} \\
+T^0_3 & = & \begin{bmatrix}
+ 			\cos(\theta_1 + \theta_2 + \theta_3) & - \sin(\theta_1 + \theta_2 + \theta_3) & 0 & a_1\cos(\theta_1) + a_2\cos(\theta_1 + \theta_2) + a_3 \cos(\theta_1 + \theta_2 + \theta_3)\\
+            \sin(\theta_1 + \theta_2 + \theta_3) &  \cos(\theta_1 + \theta_2 + \theta_3) & 0 & a_1\sin(\theta_1) + a_2\sin(\theta_1 + \theta_2) + a_3 \sin(\theta_1 + \theta_2 + \theta_3)\\
+            0 & 0 & 1 & 0\\
+            0 & 0 & 0 & 1\\
+			\end{bmatrix} \\  
+J & = & \begin{bmatrix}
+		\begin{bmatrix}
+		0 \\ 0 \\ 1
+		\end{bmatrix} \times 
+        \begin{bmatrix}
+		a_1c_1 + a_2 c_{12} + a_3 c_{123} \\ 
+        a_1s_1 +a_2 s_{12} + a_3 s_{123} \\ 0
+		\end{bmatrix} & \begin{bmatrix}
+		0 \\ 0 \\ 1
+		\end{bmatrix} \times 
+        \begin{bmatrix}
+		a_2 c_{12} + a_3 c_{123} \\ a_2 s_{12} + a_3 s_{123} \\ 0
+		\end{bmatrix} & \begin{bmatrix}
+		0 \\ 0 \\ 1
+		\end{bmatrix} \times \begin{bmatrix}
+		a_3c_{123} \\ a_3s_{123} \\ 0
+		\end{bmatrix}\\
+        \begin{bmatrix}
+		0 \\ 0 \\ 1
+		\end{bmatrix} & \begin{bmatrix}
+		0 \\ 0 \\ 1
+		\end{bmatrix} & \begin{bmatrix}
+		0 \\ 0 \\ 1
+		\end{bmatrix}\\
+        \end{bmatrix}\\ 
+J & = & \begin{bmatrix}
+		-a_1s_1-a_2s_{12}-a_3s_{123} & -a_2 s_{12} - a_3 s_{123} & -a_3 s_{123}\\
+        a_1c_1 +a_2c_{12}+a_3c_{123} & a_2 c_{12} + a_3 c_{123} & a_3 c_{123}\\
+        0 & 0 & 0\\
+        0 & 0 & 0\\
+        0 & 0 & 0\\
+        1 & 1 & 1\\
+		\end{bmatrix}        
+\end{eqnarray*}
+
+\noindent Energy and Inertia Equations:
+
+\begin{eqnarray*}
+T & = & \frac{1}{2}\begin{bmatrix}
+\dot{\theta}_1 & \dot{\theta}_2 & \dot{\theta}_3
+\end{bmatrix}
+\begin{bmatrix}
+H_{11} & H_{12} & H_{13}\\
+H_{12} & H_{22} & H_{23}\\
+H_{13} & H_{23} & H_{33}\\
+\end{bmatrix}
+\begin{bmatrix}
+\dot{\theta}_1 \\ \dot{\theta}_2 \\ \dot{\theta}_3
+\end{bmatrix}\\
+H & = & \sum_{i=1}^n \Big(m_i J_{v_i}^T J_{v_i} + J_{\omega_i}^T I_i J_{\omega_i} \Big)\\
+T & = & \sum_{i=1}^n \Big(m_i \dot{q}^T J_{v_i}^T J_{v_i}\dot{q} + \dot{q}^T J_{\omega_i}^T I_i J_{\omega_i} \dot{q} \Big)\\
+U & = & \sum_{i=1}^n m_ig_iy_i
+\end{eqnarray*}
+
+\clearpage
+
+\noindent Position, Jacobian, and Energy Equations for Each Link:
+
+\begin{eqnarray*}
+x_1 & = & \frac{a_1}{2}c_1\\
+y_1 & = & \frac{a_1}{2}s_1\\
+J_{v_1} & = & \begin{bmatrix}
+			  \frac{\partial x_1}{\partial \theta_1} & \frac{\partial x_1}{\partial \theta_2} & \frac{\partial x_1}{\partial \theta_3} \\
+              \frac{\partial y_1}{\partial \theta_1} & \frac{\partial y_1}{\partial \theta_2} & \frac{\partial y_1}{\partial \theta_3} \\
+              \frac{\partial z_1}{\partial \theta_1} & \frac{\partial z_1}{\partial \theta_2} & \frac{\partial z_1}{\partial \theta_3} \\
+			  \end{bmatrix}\\
+J_{v_1} & = & \begin{bmatrix}
+			  -\frac{a_1}{2}s_1 & 0 & 0\\
+              \frac{a_1}{2}c_1 & 0 & 0\\
+              0 & 0 & 0\\
+			  \end{bmatrix}\\  
+J_{\omega_1} & = & \begin{bmatrix}
+			  0 & 0 & 0\\
+              0 & 0 & 0\\
+              1 & 0 & 0\\
+			  \end{bmatrix}\\
+I_1 & = & \begin{bmatrix}
+		  0 & 0 & 0\\
+          0 & 0 & 0\\
+          0 & 0 & I_1\\
+	      \end{bmatrix}\\
+\end{eqnarray*}
+
+\begin{eqnarray*}
+U_1 & = & m_1 \frac{a_1}{2}s_{1}\\
+\end{eqnarray*}
+
+\begin{eqnarray*}
+x_2 & = & a_1 c_1 + \frac{a_2}{2}c_{12}\\
+y_2 & = & a_1 s_1 + \frac{a_2}{2}s_{12}\\
+J_{v_2} & = & \begin{bmatrix}
+			  \frac{\partial x_2}{\partial \theta_1} & \frac{\partial x_2}{\partial \theta_2} & \frac{\partial x_2}{\partial \theta_3} \\
+              \frac{\partial y_2}{\partial \theta_1} & \frac{\partial y_2}{\partial \theta_2} & \frac{\partial y_2}{\partial \theta_3} \\
+              \frac{\partial z_2}{\partial \theta_1} & \frac{\partial z_2}{\partial \theta_2} & \frac{\partial z_2}{\partial \theta_3} \\
+			  \end{bmatrix}\\
+J_{v_2} & = & \begin{bmatrix}
+			  -a_1s_1 -\frac{a_2}{2}s_{12} & - \frac{a_2}{2} s_{12} & 0\\
+              a_1 c_1 + \frac{a_2}{2}c_{12} & \frac{a_2}{2}c_{12} & 0 \\
+              0 & 0 & 0\\
+			  \end{bmatrix}\\
+J_{\omega_2} & = & \begin{bmatrix}
+			  0 & 0 & 0\\
+              0 & 0 & 0\\
+              1 & 1 & 0\\
+			  \end{bmatrix}\\
+I_2 & = & \begin{bmatrix}
+		  0 & 0 & 0\\
+          0 & 0 & 0\\
+          0 & 0 & I_2\\
+	      \end{bmatrix}\\              
+\end{eqnarray*}
+
+\begin{eqnarray*}
+U_2 & = & m_1 a_1 s_1 + m_2 \frac{a_2}{2}s_{12}\\
+\end{eqnarray*}
+
+\begin{eqnarray*}
+x_3 & = & a_1 c_1 + a_2 c_{12} + \frac{a_3}{2}c_{123}\\
+y_3 & = & a_1 s_1 + a_2 s_{12} + \frac{a_3}{2}s_{123}\\
+J_{v_3} & = & \begin{bmatrix}
+			  \frac{\partial x_3}{\partial \theta_1} & \frac{\partial x_3}{\partial \theta_2} & \frac{\partial x_3}{\partial \theta_3} \\
+              \frac{\partial y_3}{\partial \theta_1} & \frac{\partial y_3}{\partial \theta_2} & \frac{\partial y_3}{\partial \theta_3} \\
+              \frac{\partial z_3}{\partial \theta_1} & \frac{\partial z_3}{\partial \theta_2} & \frac{\partial z_3}{\partial \theta_3} \\
+			  \end{bmatrix}\\
+J_{v_3} & = & \begin{bmatrix}
+			  -a_1s_1 -\frac{a_2}{2}s_{12} -a_3s_{123} & - \frac{a_2}{2} s_{12} -\frac{a_3}{2}s_{123} & -\frac{a_3}{2}s_{123}\\
+              a_1 c_1 + \frac{a_2}{2}c_{12} + \frac{a_3}{2}c_{123} & \frac{a_2}{2}c_{12} + \frac{a_3}{2}c_{123}  & \frac{a_3}{2}c_{123} \\
+              0 & 0 & 0\\
+			  \end{bmatrix}\\
+J_{\omega_3} & = & \begin{bmatrix}
+			  0 & 0 & 0\\
+              0 & 0 & 0\\
+              1 & 1 & 1\\
+			  \end{bmatrix}\\
+I_3 & = & \begin{bmatrix}
+		  0 & 0 & 0\\
+          0 & 0 & 0\\
+          0 & 0 & I_3\\
+	      \end{bmatrix}\\              
+\end{eqnarray*}
+
+\begin{eqnarray*}
+U_3 & = & m_1 a_1 s_1 + m_2 a_2 s_{12} + m_3 \frac{a_3}{2}s_{123}\\
+\end{eqnarray*}
+
+% \noindent Derivation of the two-link solution:
+
+% \begin{eqnarray*}
+% T & = & \frac{1}{2}\begin{bmatrix}
+% \dot{\theta}_1 & \dot{\theta}_2 \\
+% \end{bmatrix}\begin{bmatrix}
+% H_{11} & H_{12}\\
+% H_{12} & H_{22}\\
+% \end{bmatrix}\begin{bmatrix}
+% \dot{\theta}_1 \\ \dot{\theta}_2 \\
+% \end{bmatrix}\\
+% T & = & \frac{1}{2}H_{11}\dot{\theta}_1^2 + H_{12}\dot{\theta}_1\dot{\theta}_2 + \frac{1}{2}H_{22}\dot{\theta}_2^2\\
+% T & = & \frac{1}{2}\begin{bmatrix}
+% \dot{\theta}_1 & \dot{\theta}_2 \\
+% \end{bmatrix}\begin{bmatrix}
+% \frac{1}{4}m_1a_1^2 + I_1 + m_2(a_1^2+\frac{1}{2} a_2^2+a_1a_2c_2)+I_2  & m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2\\
+% m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 & \frac{1}{4} m_2a_2^2 + I_2\\
+% \end{bmatrix}\begin{bmatrix}
+% \dot{\theta}_1 \\ \dot{\theta}_2 \\
+% \end{bmatrix}\\
+% T & = & \frac{1}{2}\begin{bmatrix}
+% \dot{\theta}_1 \big( \frac{1}{4}m_1a_1^2 + I_1 + m_2(a_1^2+\frac{1}{2} a_2^2+a_1a_2c_2)+I_2 \big)  + \dot{\theta}_2\big( m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big) \\
+%  \dot{\theta}_1 \big( m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big) + \dot{\theta}_2 \big( \frac{1}{4} m_2a_2^2 + I_2 \big)\\
+% \end{bmatrix}^T\begin{bmatrix}
+% \dot{\theta}_1 \\ \dot{\theta}_2 \\
+% \end{bmatrix}\\
+% T & = & \frac{1}{2} \Big( \dot{\theta}_1^2 \big( \frac{1}{4}m_1a_1^2 + I_1 + m_2(a_1^2+\frac{1}{2} a_2^2+a_1a_2c_2)+I_2 \big)  + \dot{\theta}_1\dot{\theta}_2\big( m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big)\\  
+% & & + \dot{\theta}_1 \dot{\theta}_2 \big( m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big) + \dot{\theta}_2^2 \big( \frac{1}{4} m_2a_2^2 + I_2 \big) \Big)\\
+% %T & = & \frac{1}{2}\begin{bmatrix}
+% %\dot{\theta}_1 \big( m_1a_1^2 + I_1 + m_2(a_1^2+a_2^2+2a_1a_2c_2)+I_2\big) + \dot{\theta}_2\big(m_2(a_2^2+a_1a_2c_2)+I_2 \big) \\ \dot{\theta}_1 \big( m_2(a_2^2+a_1a_2c_2)+I_2 \big) + \dot{\theta}_2\big(m_2a_2^2 + I_2 \big)\\
+% %\end{bmatrix}^T\begin{bmatrix}
+% %\dot{\theta}_1 \\ \dot{\theta}_2 \\
+% %\end{bmatrix}\\
+% %T & = & \frac{1}{2}\Big(\dot{\theta}_1^2 \big( m_1a_1^2 + I_1 + m_2(a_1^2+a_2^2+2a_1a_2c_2)+I_2\big) + \dot{\theta}_1\dot{\theta}_2\big(m_2(a_2^2+a_1a_2c_2)+I_2 \big) \\ 
+% %& & + \dot{\theta}_1 \dot{\theta}_2 \big( m_2(a_2^2+a_1a_2c_2)+I_2 \big) + \dot{\theta}_2^2\big(m_2a_2^2 + I_2 \big) \Big)\\
+% U & = & \frac{1}{2} m_1 g a_1 s_1 + m_2g(a_1s_1 +\frac{1}{2}a_2s_{12})\\
+% L & = & \frac{1}{2}H_{11}\dot{\theta}_1^2 + H_{12}\dot{\theta}_1\dot{\theta}_2 + \frac{1}{2}H_{22}\dot{\theta}_2^2 - \frac{1}{2} m_1 g a_1 s_1 + m_2g(a_1s_1 +\frac{1}{2}a_2s_{12})\\
+% \end{eqnarray*}
+
+% \begin{eqnarray*}
+% \frac{d}{dt}\frac{\partial L}{\partial \dot{q}_i} - \frac{\partial L}{\partial q_i} & = & \tau_i\\
+% \frac{\partial L}{\partial q_1} & = & - \frac{\partial U}{\partial q_1} = -(\frac{1}{2} m_1a_1 g c_1 + m_2g(\frac{1}{2}a_2 c_{12} + a_1c_1))\\
+% \frac{\partial L}{\partial \dot{q}_1} & = & H_{11}\dot{\theta}_1 + H_{12}\dot{\theta}_2\\
+% \frac{d}{dt} \frac{\partial L}{\partial \dot{q}_1} & = & H_{11}\ddot{\theta}_1 + H_{12}\ddot{\theta}_2 + \frac{\partial H_{11}}{\partial \theta_2}\dot{\theta}_1 \dot{\theta}_2 + \frac{\partial H_{12}}{\partial \theta_2}\dot{\theta}_2^2\\
+% \frac{d}{dt} \frac{\partial L}{\partial \dot{q}_1} & = & \big( \frac{1}{4}m_1a_1^2 + I_1 + m_2(a_1^2 + \frac{1}{2} a_2^2+a_1a_2c_2)+I_2 \big) \ddot{\theta}_1 + \big(m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big) \ddot{\theta}_2 \\
+% & & -m_2 s_2 \dot{\theta}_1\dot{\theta}_2 - \frac{1}{2} m_2 a_1 a_2 s_1 \dot{\theta}_2^2\\
+% \tau_1 & = & \big( \frac{1}{4}m_1a_1^2 + I_1 + m_2(a_1^2 + \frac{1}{2} a_2^2+a_1a_2c_2)+I_2 \big) \ddot{\theta}_1 + \big(m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big) \ddot{\theta}_2  + \\
+% & & -m_2 s_2 \dot{\theta}_1\dot{\theta}_2 - \frac{1}{2} m_2 a_1 a_2 s_1 \dot{\theta}_2^2 + \frac{1}{2} m_1a_1 g c_1 + m_2g(\frac{1}{2}a_2 c_{12} + a_1c_1)\\
+% \frac{\partial L}{\partial q_2} & = & - \frac{\partial U}{\partial q_2} = -\frac{1}{2} m_2 a_2 g c_{12}\\
+% \frac{\partial L}{\partial \dot{q}_2} & = & H_{22}\dot{\theta}_2 + H_{12}\dot{\theta}_1\\
+% \frac{d}{dt} \frac{\partial L}{\partial \dot{q}_2} & = & H_{22}\ddot{\theta}_2 + H_{12}\ddot{\theta}_1 + \frac{d H_{22}}{d t} \dot{\theta}_2 + \frac{\partial H_{12}}{\partial \theta_2}\dot{\theta}_1\dot{\theta}_2\\
+% \frac{d}{dt} \frac{\partial L}{\partial \dot{q}_2} & = & H_{22}\ddot{\theta}_2 + H_{12}\ddot{\theta}_1 + \frac{\partial H_{12}}{\partial \theta_2}\dot{\theta}_1\dot{\theta}_2\\
+% \frac{d}{dt} \frac{\partial L}{\partial \dot{q}_2} & = & \big( \frac{1}{4} m_2a_2^2 + I_2 \big)  \ddot{\theta}_2 +\big(m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big)\ddot{\theta}_1 - \frac{1}{2} m_2 a_1 a_2 s_1 \dot{\theta}_1\dot{\theta}_2\\
+% \tau_2 & = & \big( \frac{1}{4} m_2a_2^2 + I_2 \big)  \ddot{\theta}_2 +\big(m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big)\ddot{\theta}_1 - \frac{1}{2} m_2 a_1 a_2 s_1 \dot{\theta}_1\dot{\theta}_2 + \frac{1}{2} m_2 a_2 g c_{12}\\
+% \end{eqnarray*}
+
+% \begin{eqnarray*}
+% \begin{bmatrix}
+% \tau_1\\
+% \tau_2
+% \end{bmatrix} & = & \begin{bmatrix}
+% \big( \frac{1}{4}m_1a_1^2 + I_1 + m_2(a_1^2 + \frac{1}{2} a_2^2+a_1a_2c_2)+I_2 \big) & \big(m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big)\\
+% \big(m_2(\frac{1}{4} a_2^2 + \frac{1}{2} a_1a_2c_2)+I_2 \big) & \big( \frac{1}{4} m_2a_2^2 + I_2 \big)
+% \end{bmatrix}
+% \begin{bmatrix}
+% \ddot{\theta}_1 \\
+% \ddot{\theta}_2
+% \end{bmatrix} \\
+% & & +
+% \begin{bmatrix}
+% -m_2 s_2 & - \frac{1}{2}m_2a_1a_2s_1\\
+% - \frac{1}{2} m_2 a_1 a_2 s_1  & 0 \\
+% \end{bmatrix}
+% \begin{bmatrix}
+% \dot{\theta}_1\dot{\theta}_2 \\
+% \dot{\theta}_2^2
+% \end{bmatrix} + 
+% \begin{bmatrix}
+% \frac{1}{2} m_1a_1 g c_1 + m_2g(\frac{1}{2}a_2 c_{12} + a_1c_1)\\
+% \frac{1}{2}m_2 a_2gc_{12}
+% \end{bmatrix}
+% \end{eqnarray*}
+
+
+\clearpage
+
+\noindent Derivation of the Lagrangian Equation in terms of General Multibody Inertia Matrices and Arbitrary Inputs in Matrix/Indicial Notation Form: 
+
+\begin{eqnarray*}
+\textbf{r}_i & = & \textbf{r}_i(q_1,\dots,q_n)\\
+d\textbf{r}_i & = & \frac{\partial \textbf{r}_i}{\partial q_1} dq_1 + \dots + \frac{\partial \textbf{r}_i}{\partial q_n} dq_n\\
+\textbf{r}_i & = & \begin{bmatrix}
+		x_i\\
+        y_i\\
+        z_i\\
+        \end{bmatrix}\\
+d\textbf{r}_i & = &  \begin{bmatrix}
+		\frac{\partial x_i}{\partial q_1} dq_1 + \dots + \frac{\partial x_i}{\partial q_n} dq_n\\
+        \frac{\partial y_i}{\partial q_1} dq_1 + \dots + \frac{\partial y_i}{\partial q_n} dq_n\\
+        \frac{\partial z_i}{\partial q_1} dq_1 + \dots + \frac{\partial z_i}{\partial q_n} dq_n\\
+        \end{bmatrix}\\
+d\textbf{r}_i & = & \begin{bmatrix}
+		\frac{\partial x_i}{\partial q_1} & \dots & \frac{\partial x_i}{\partial q_n}\\
+        \frac{\partial y_i}{\partial q_1} & \dots & \frac{\partial y_i}{\partial q_n}\\
+        \frac{\partial z_i}{\partial q_1} & \dots & \frac{\partial z_i}{\partial q_n}\\
+        \end{bmatrix} \begin{bmatrix}
+        dq_1\\
+        \vdots\\
+        dq_n\\
+        \end{bmatrix}\\
+d\textbf{r}_i & = & \mathbb{J}_i^L d\textbf{q}\\
+\frac{d\textbf{r}_i}{dt} & = & \mathbb{J}_i^L\frac{d\textbf{q}}{dt}\\
+\textbf{v}_i & = & \mathbb{J}_i^L \dot{\textbf{q}}\\
+\mathbf{\omega}_i & = & \dot{\theta}_1 + \dots + \dot{\theta}_i \\
+T & = & \frac{1}{2} \sum_{i=1}^{n} (m_i v_i^2 + I_i w_i^2)\\
+T & = & \frac{1}{2} \sum_{i=1}^{n} (m_i v_i^T v_i + w_i^T \mathbb{I}_i w_i)\\
+T & = & \frac{1}{2} \sum_{i=1}^{n} (m_i \dot{\textbf{q}}^T (\mathbb{J}_i^L)^T \mathbb{J}_i^L \dot{\textbf{q}} + \dot{\textbf{q}}^T (\mathbb{J}_i^A)^T \mathbb{I}_i \mathbb{J}_i^A \dot{\textbf{q}})\\
+T & = & \frac{1}{2} \dot{\textbf{q}}^T \sum_{i=1}^{n} (m_i  (\mathbb{J}_i^L)^T \mathbb{J}_i^L  +(\mathbb{J}_i^A)^T \mathbb{I}_i \mathbb{J}_i^A) \dot{\textbf{q}}\\
+T & = & \frac{1}{2} \dot{\textbf{q}}^T \mathbb{H} \dot{\textbf{q}}\\
+T & = & \frac{1}{2} \begin{bmatrix}
+		\dot{q}_1 & \dots & \dot{q}_n
+        \end{bmatrix} \begin{bmatrix}
+        H_{11} & \dots & H_{1n}\\
+        \vdots & \ddots & \vdots\\
+		H_{n1} & \dots & H_{nn}\\
+        \end{bmatrix} \begin{bmatrix}
+        \dot{q}_1\\
+        \vdots\\
+        \dot{q}_n\\
+        \end{bmatrix}\\
+T & = & \frac{1}{2} \sum_{i=1}^{n} \sum_{j=1}^{n} H_{ij} \dot{q}_i \dot{q}_j\\
+\frac{\partial L}{\partial \dot{q}_i} & = & \frac{\partial T}{\partial \dot{q}_i} = \frac{1}{2} \sum_{j=1}^{n} H_{ij} \dot{q}_j\\
+\frac{d}{dt} ( \frac{\partial L}{\partial \dot{q}_i} ) & = & \frac{1}{2} \sum_{j=1}^{n} ( \frac{dH_{ij}}{dt} \dot{q}_j + H_{ij} \ddot{q}_j)\\
+H_{ij} & = & H_{ij}(q_1,\dots,q_n)\\
+\frac{dH_{ij}}{dt} & = & \frac{1}{2} \sum_{k=1}^{n} \frac{\partial H_{ij}}{\partial q_k} \frac{dq_k}{dt} = \sum_{k=1}^{n} \frac{\partial H_{ij}}{\partial q_k} \dot{q}_k\\
+\frac{d}{dt} ( \frac{\partial L}{\partial \dot{q}_i} ) & = & \frac{1}{2} \sum_{j=1}^{n} ( \sum_{k=1}^{n} \frac{\partial H_{ij}}{\partial q_k} \dot{q}_k \dot{q}_j + H_{ij} \ddot{q}_j)\\
+\end{eqnarray*}
+
+%\begin{eqnarray*}
+%T & = & \alpha \dot{\theta}_1^2 + \beta \dot{\theta}_2^2 + \gamma \dot{\theta}_3^2 + \delta \dot{\theta}_1\dot{\theta}_2 + \varepsilon \dot{\theta}_1\dot{\theta}_3 + \eta \dot{\theta}_2\dot{\theta}_3 \\
+%\alpha & = & \frac{1}{16} (2 a_1^2 m_1+8 a_1^2 m_2+8
+%   a_1^2 m_3+8 a_1 a_2 (m_2+2 m_3)c_2 - 4 a_1 a_3 m_3c_{1123} + 8 a_1 a_3 m_3 c_{12} \\
+%\alpha & = & \frac{1}{2} \left(m_1 \left(\frac{1}{4} a_1^2 \sin ^2(\text{th1}(t))+\frac{1}{4} a_1^2 \cos ^2(\text{th1}(t))\right)+m_3 \left(\left(-a_1 \sin
+%   (\text{th1}(t))-a_2 \sin (\text{th1}(t)+\text{th2}(t))-\frac{1}{2} a_3 \sin (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right)^2+\left(a_1 \cos
+%   (\text{th1}(t))+a_2 \cos (\text{th1}(t)+\text{th2}(t))+\frac{1}{2} a_3 \cos (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right)^2\right)+m_2 \left(\left(-a_1
+%   \sin (\text{th1}(t))-\frac{1}{2} a_2 \sin (\text{th1}(t)+\text{th2}(t))\right)^2+\left(a_1 \cos (\text{th1}(t))+\frac{1}{2} a_2 \cos
+%   (\text{th1}(t)+\text{th2}(t))\right)^2\right)+\text{I1v}+\text{I2v}+\text{I3v}\right)\\
+%\beta & = & \frac{1}{8} a_2^2 m_2 \sin ^2(\text{th1}(t)+\text{th2}(t))+\frac{1}{8} a_2^2 m_2 \cos ^2(\text{th1}(t)+\text{th2}(t))+\frac{1}{2} a_2^2 m_3 \sin
+%   ^2(\text{th1}(t)+\text{th2}(t))+\frac{1}{2} a_2^2 m_3 \cos ^2(\text{th1}(t)+\text{th2}(t))+\frac{1}{2} a_2 a_3 m_3 \sin (\text{th1}(t)+\text{th2}(t))
+%   \sin (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))+\frac{1}{2} a_2 a_3 m_3 \cos (\text{th1}(t)+\text{th2}(t)) \cos
+%   (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))+\frac{1}{8} a_3^2 m_3 \sin ^2(\text{th1}(t)+\text{th2}(t)+\text{th3}(t))+\frac{1}{8} a_3^2 m_3 \cos
+%   ^2(\text{th1}(t)+\text{th2}(t)+\text{th3}(t))+\frac{\text{I2v}}{2}+\frac{\text{I3v}}{2}\\
+%\gamma & = & \frac{1}{8} a_3^2 m_3 \sin ^2(\text{th1}(t)+\text{th2}(t)+\text{th3}(t))+\frac{1}{8} a_3^2 m_3 \cos
+%   ^2(\text{th1}(t)+\text{th2}(t)+\text{th3}(t))+\frac{\text{I3v}}{2}\\
+%\delta & = & m_3 \left(\left(-a_2 \sin (\text{th1}(t)+\text{th2}(t))-\frac{1}{2} a_3 \sin (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right) \left(-a_1 \sin
+%   (\text{th1}(t))-a_2 \sin (\text{th1}(t)+\text{th2}(t))-\frac{1}{2} a_3 \sin (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right)+\left(a_2 \cos
+%   (\text{th1}(t)+\text{th2}(t))+\frac{1}{2} a_3 \cos (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right) \left(a_1 \cos (\text{th1}(t))+a_2 \cos
+%   (\text{th1}(t)+\text{th2}(t))+\frac{1}{2} a_3 \cos (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right)\right)+m_2 \left(\frac{1}{2} a_2 \cos
+%   (\text{th1}(t)+\text{th2}(t)) \left(a_1 \cos (\text{th1}(t))+\frac{1}{2} a_2 \cos (\text{th1}(t)+\text{th2}(t))\right)-\frac{1}{2} a_2 \sin
+%   (\text{th1}(t)+\text{th2}(t)) \left(-a_1 \sin (\text{th1}(t))-\frac{1}{2} a_2 \sin (\text{th1}(t)+\text{th2}(t))\right)\right)+\text{I2v}+\text{I3v}\\
+%\varepsilon & = & m_3 \left(\frac{1}{2} a_3 \cos (\text{th1}(t)+\text{th2}(t)+\text{th3}(t)) \left(a_1 \cos (\text{th1}(t))+a_2 \cos (\text{th1}(t)+\text{th2}(t))+\frac{1}{2}
+%   a_3 \cos (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right)-\frac{1}{2} a_3 \sin (\text{th1}(t)+\text{th2}(t)+\text{th3}(t)) \left(-a_1 \sin
+%   (\text{th1}(t))-a_2 \sin (\text{th1}(t)+\text{th2}(t))-\frac{1}{2} a_3 \sin (\text{th1}(t)+\text{th2}(t)+\text{th3}(t))\right)\right)+\text{I3v}\\
+%\eta & = & \frac{1}{8} \left(-2 a_2 a_3 m_3 c_{11223}+2 a_2 a_3 m_3 c_{3} - a_3^2 m_3 c_{112233}+a_3^2 m_3+8
+%   I_3\right)\\
+%\end{eqnarray*}
+
+
+%\section*{MATLAB Code}
+
+%\lstinputlisting[basicstyle=\ttfamily\scriptsize,language=Matlab]{AE352HW7.m}
+
+%\clearpage
+
+%\section*{Mathematica Code}
+
+%\lstinputlisting[basicstyle=\ttfamily\scriptsize,language=mathematica]{MBIMatrixCalc.nb}
+
+
+
+
+
+\end{document}
